@@ -14,6 +14,27 @@ const FALLBACK={
 };
 const invalid=(r,c)=>(r==="pc"&&c==="c")||(r==="c"&&c==="pc");
 const keyFor=(r,c)=>r==="pc"&&c==="pc"?"unlimited":r==="c"&&c==="c"?"dmp":`${r}-${c}`;
+function awayForAxis(key){return key==="pc"||key==="c"?1:Number(key)}
+function derivedTargetEligible(data,r,c){
+  if(invalid(r,c))return false;
+  if(r==="c"||c==="c")return false;
+  if(r==="pc"&&c==="pc")return true;
+  const board=data?.board||{};
+  if(String(board.cubeOwner||"center").toLowerCase()==="white")return false;
+  const cubeValue=Math.max(1,Number(board.cubeValue)||1);
+  if(cubeValue>=awayForAxis(r))return false;
+  const maxCube=Number(board.maxCube);
+  if(Number.isFinite(maxCube)&&maxCube>=0){
+    const exp=Math.log2(cubeValue);
+    if(Number.isFinite(exp)&&exp>=maxCube)return false;
+  }
+  return true;
+}
+function targetEligible(data,r,c){
+  const targets=Array.isArray(data?.analysisTargets)?new Set(data.analysisTargets):null;
+  if(targets)return targets.has(keyFor(r,c));
+  return derivedTargetEligible(data,r,c);
+}
 const ACTION_COLORS={
   noDouble:"#CCFFFF",
   doubleTake:"#CCFFCC",
@@ -35,7 +56,7 @@ function actionColor(action){
 async function load(){try{const res=await fetch("data/positions/001.json",{cache:"no-store"});if(!res.ok)throw 0;return await res.json()}catch{return FALLBACK}}
 function renderTable(data){
   const table=document.getElementById("score-table"),legend=document.getElementById("legend");
-  const moves=[...new Set(Object.values(data.results||{}).map(v=>v?.best).filter(Boolean))];
+  const displayedMoves=[];
   const axisLabel=a=>`<span class="axis-label">${a.short}</span>`;
   let html='<thead><tr><th class="corner" aria-hidden="true"></th>'+AXES.map(a=>`<th class="white-axis">${axisLabel(a)}</th>`).join('')+'</tr></thead><tbody>';
   for(const r of AXES){
@@ -48,12 +69,17 @@ function renderTable(data){
         html+=`<td class="score-cell invalid" aria-label="not applicable">${note}</td>`;
         continue;
       }
-      const k=keyFor(r.key,c.key),item=(data.results||{})[k]||{},best=item.best||"—",bg=item.best?actionColor(item.best):"";
+      const k=keyFor(r.key,c.key);
+      const eligible=targetEligible(data,r.key,c.key);
+      const item=eligible?((data.results||{})[k]||{}):{};
+      const best=item.best||"—",bg=item.best?actionColor(item.best):"";
+      if(item.best)displayedMoves.push(item.best);
       html+=`<td class="score-cell ${item.best?'':'empty'}" ${item.best?`data-move="${best.replace(/"/g,'&quot;')}" style="background:${bg}"`:''}><span class="move">${best}</span></td>`;
     }
     html+='</tr>';
   }
   html+='</tbody>';table.innerHTML=html;
+  const moves=[...new Set(displayedMoves)];
   legend.innerHTML=moves.length?moves.map(m=>`<span class="legend-item"><span class="legend-swatch" style="background:${actionColor(m)}"></span>${m}</span>`).join(''):'';
 }
 (async()=>{

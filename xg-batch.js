@@ -975,7 +975,8 @@ window.ScoreMapXGBatch = (() => {
       title:String(options.title||"").trim(),
       generatedAt:new Date().toISOString(),
       source:"eXtreme Gammon 2",
-      board:{points:boardSource.position,dice:[],cubeValue:cube.cubeValue,cubeOwner:cube.cubeOwner,matchLength:5,blackScore:0,whiteScore:0,crawford:false},
+      analysisTargets:activeItems.map(item=>item.key),
+      board:{points:boardSource.position,dice:[],cubeValue:cube.cubeValue,cubeOwner:cube.cubeOwner,maxCube:sourceXgid?.maxCube??null,matchLength:5,blackScore:0,whiteScore:0,crawford:false},
       results
     };
   }
