@@ -1,10 +1,16 @@
 {
   "schemaVersion": 1,
+  "updatedAt": "2026-09-09T16:00:11.417Z",
   "positions": [
     {
       "id": "001",
       "title": "3ロール×3ロール",
       "generatedAt": "2026-09-09T14:46:37.239Z"
+    },
+    {
+      "id": "002",
+      "title": "4ロール×4ロール",
+      "generatedAt": "2026-09-09T15:59:23.737Z"
     }
   ]
 }
