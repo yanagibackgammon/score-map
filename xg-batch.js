@@ -489,7 +489,7 @@ window.ScoreMapXGBatch = (() => {
   async function parsedFromXgid(value){
     const xgid=parseXgid(value);
     let response;
-    try{response=await fetch("assets/xgid-template.xgp?v=16",{cache:"no-store"});}catch{throw new Error("XGID用テンプレートを読み込めません。");}
+    try{response=await fetch("assets/xgid-template.xgp?v=17",{cache:"no-store"});}catch{throw new Error("XGID用テンプレートを読み込めません。");}
     if(!response.ok)throw new Error("XGID用テンプレートを読み込めません。");
     const parsed=await parsePackage(await response.arrayBuffer());
     const tempXg=parsed.entries.find(e=>e.name.toLowerCase()==="temp.xg");
@@ -510,16 +510,109 @@ window.ScoreMapXGBatch = (() => {
     return parsed;
   }
 
+  function firstRecord(bytes, type) {
+    if (!bytes || bytes.length % SAVE_REC_SIZE !== 0) return null;
+    for (let off=0; off<bytes.length; off+=SAVE_REC_SIZE) {
+      if (bytes[off+8]===type) return bytes.slice(off,off+SAVE_REC_SIZE);
+    }
+    return null;
+  }
+
+  async function loadFooterTemplates(){
+    let response;
+    try{response=await fetch("assets/xg-footer-template.bin?v=17",{cache:"no-store"});}
+    catch{throw new Error("XG match用テンプレートを読み込めません。");}
+    if(!response.ok)throw new Error("XG match用テンプレートを読み込めません。");
+    const bytes=new Uint8Array(await response.arrayBuffer());
+    if(bytes.length!==SAVE_REC_SIZE*2||bytes[8]!==4||bytes[SAVE_REC_SIZE+8]!==5)throw new Error("XG match用テンプレートが不正です。");
+    return {gameFooter:bytes.slice(0,SAVE_REC_SIZE),matchFooter:bytes.slice(SAVE_REC_SIZE)};
+  }
+
+  function sourceRecords(parsed){
+    const main=parsed.entries.find(e=>e.name.toLowerCase()==="temp.xg");
+    if(!main)throw new Error("XG/XGP内にtemp.xgがありません。");
+    const matchHeader=firstRecord(main.bytes,0);
+    const gameHeader=firstRecord(main.bytes,1);
+    const event=firstRecord(main.bytes,3)||firstRecord(main.bytes,2);
+    if(!matchHeader||!gameHeader||!event)throw new Error("元ポジションの局面を読み取れません。XGPまたは1局面を含むXGを指定してください。");
+    return {matchHeader,gameHeader,event,eventType:event[8]};
+  }
+
+  function patchedRecords(base,variant,orientation,gameNumber){
+    const patched=patchXgStream(concat([base.matchHeader,base.gameHeader,base.event]),variant,orientation);
+    const matchHeader=patched.slice(0,SAVE_REC_SIZE);
+    const gameHeader=patched.slice(SAVE_REC_SIZE,SAVE_REC_SIZE*2);
+    const event=patched.slice(SAVE_REC_SIZE*2,SAVE_REC_SIZE*3);
+    const gv=new DataView(gameHeader.buffer,gameHeader.byteOffset,gameHeader.byteLength);
+    gv.setInt32(48,gameNumber,true);
+    gv.setUint8(52,0);
+    return {matchHeader,gameHeader,event};
+  }
+
+  function makeNeutralGameFooter(template,variant,orientation){
+    const out=patchXgStream(template,variant,orientation);
+    const view=new DataView(out.buffer,out.byteOffset,out.byteLength);
+    view.setInt32(24,0,true);      // winner
+    view.setInt32(28,0,true);      // points won
+    view.setInt32(32,1000,true);   // settle / neutral footer
+    setDouble(view,40,-1000);
+    setDouble(view,48,-1000);
+    view.setInt32(112,-1,true);
+    return out;
+  }
+
+  function makeNeutralMatchFooter(template){
+    const out=cloneBytes(template),view=new DataView(out.buffer,out.byteOffset,out.byteLength);
+    view.setInt32(12,0,true);view.setInt32(16,0,true);view.setInt32(20,0,true);
+    return out;
+  }
+
+  async function buildPackageFromStream(parsed,stream,saveName,currentEvent){
+    const prefix=cloneBytes(parsed.richPrefix);
+    writeWideString(prefix,2088,2048,saveName);
+    const entries=parsed.entries.map(entry=>{
+      const lower=entry.name.toLowerCase();
+      if(lower==="temp.xg")return {...entry,bytes:stream};
+      if(lower==="temp.xgi")return {...entry,bytes:currentEvent||entry.bytes.slice(0,Math.min(entry.bytes.length,SAVE_REC_SIZE*2))};
+      return {...entry,bytes:cloneBytes(entry.bytes)};
+    });
+    return concat([prefix,await buildArchive(entries,parsed.arcMeta)]);
+  }
+
+  async function buildMatchPlayPackage(parsed,templates){
+    const base=sourceRecords(parsed);
+    const variants=makeVariants().filter(v=>!v.unlimited);
+    if(variants.length!==33)throw new Error("Match Play 33条件の生成に失敗しました。");
+    const records=[];let currentEvent=null;let matchHeader=null;
+    for(let i=0;i<variants.length;i++){
+      const variant=variants[i],patched=patchedRecords(base,variant,parsed.orientation,i+1);
+      if(!matchHeader)matchHeader=patched.matchHeader;
+      records.push(patched.gameHeader,patched.event,makeNeutralGameFooter(templates.gameFooter,variant,parsed.orientation));
+      if(!currentEvent)currentEvent=concat([matchHeader,patched.event]);
+    }
+    const footer=makeNeutralMatchFooter(templates.matchFooter);
+    const stream=concat([matchHeader,...records,footer]);
+    return buildPackageFromStream(parsed,stream,"SCORE MAP / MATCH PLAY 33",currentEvent);
+  }
+
+  async function buildUnlimitedPackage(parsed,templates){
+    const base=sourceRecords(parsed);
+    const variant=makeVariants().find(v=>v.unlimited);
+    const patched=patchedRecords(base,variant,parsed.orientation,1);
+    const stream=concat([patched.matchHeader,patched.gameHeader,patched.event,makeNeutralGameFooter(templates.gameFooter,variant,parsed.orientation),makeNeutralMatchFooter(templates.matchFooter)]);
+    return buildPackageFromStream(parsed,stream,"SCORE MAP / UNLIMITED",concat([patched.matchHeader,patched.event]));
+  }
+
   async function generateBatch(input, options = {}) {
     const parsed = typeof input === "string" ? await parsedFromXgid(input) : await parsePackage(input);
-    const variants = makeVariants();
-    if (variants.length !== 34) throw new Error("34条件の生成に失敗しました。");
-    const files = [];
-    for (const variant of variants) {
-      const bytes = await buildVariant(parsed, variant, options.title || "");
-      files.push({name: variant.filename, bytes, variant});
-    }
-    return {zip: buildZip(files), files};
+    const templates=await loadFooterTemplates();
+    const matchBytes=await buildMatchPlayPackage(parsed,templates);
+    const unlimitedBytes=await buildUnlimitedPackage(parsed,templates);
+    const files=[
+      {name:"score-map-match.xg",bytes:matchBytes},
+      {name:"score-map-unlimited.xg",bytes:unlimitedBytes}
+    ];
+    return {zip:buildZip(files),files};
   }
 
 
@@ -616,61 +709,75 @@ window.ScoreMapXGBatch = (() => {
     ],position,dice:[],cubeA:cubeB};
   }
 
-  function parseAnalyzedStream(bytes){
-    if(bytes.length%SAVE_REC_SIZE!==0)throw new Error("XG本体のレコード形式を読み取れません。");
-    let lastEvent=null,matchLength=5,gameScore=[0,0],crawford=false;
-    for(let off=0;off<bytes.length;off+=SAVE_REC_SIZE){
-      const rec=bytes.subarray(off,off+SAVE_REC_SIZE),type=rec[8],view=new DataView(rec.buffer,rec.byteOffset,rec.byteLength);
-      if(type===0)matchLength=view.getInt32(92,true);
-      else if(type===1){gameScore=[view.getInt32(12,true),view.getInt32(16,true)];crawford=!!view.getUint8(20)}
-      else if(type===3){const x=parseMoveAnalysis(rec);if(x)lastEvent=x}
-      else if(type===2){const x=parseCubeAnalysis(rec);if(x)lastEvent=x}
-    }
-    if(!lastEvent)throw new Error("XGの解析結果が見つかりません。XGで解析後に上書き保存してください。");
-    return {...lastEvent,matchLength,gameScore,crawford};
-  }
-
   function variantKey(variant){
     if(variant.unlimited)return "unlimited";
     if(variant.dmp)return "dmp";
     const norm=x=>x==="PC"?"pc":x==="C"?"c":x.replace("a","");
     return `${norm(variant.black)}-${norm(variant.white)}`;
   }
-  function variantBaseName(name){return String(name||"").replace(/\.(xg|xgp)$/i,"").toLowerCase()}
-  function expectedVariantForName(name){
-    const base=variantBaseName(name);
-    return makeVariants().find(v=>variantBaseName(v.filename)===base)||null;
+
+  function variantFromGame(matchLength,score1,score2,crawford,orientation){
+    if(matchLength===99999)return makeVariants().find(v=>v.unlimited);
+    const blackScore=orientation>0?score1:score2;
+    const whiteScore=orientation>0?score2:score1;
+    if(blackScore===4&&whiteScore===4&&!crawford)return makeVariants().find(v=>v.dmp);
+    const axis=(score)=>{
+      if(score===4)return crawford?"C":"PC";
+      const away=5-score;
+      return `${away}a`;
+    };
+    const black=axis(blackScore),white=axis(whiteScore);
+    return makeVariants().find(v=>!v.unlimited&&!v.dmp&&v.black===black&&v.white===white)||null;
   }
+
+  function parseAnalyzedStreamMany(bytes){
+    if(bytes.length%SAVE_REC_SIZE!==0)throw new Error("XG本体のレコード形式を読み取れません。");
+    let matchLength=5,orientation=1,current=null;
+    const results=[];
+    for(let off=0;off<bytes.length;off+=SAVE_REC_SIZE){
+      const rec=bytes.subarray(off,off+SAVE_REC_SIZE),type=rec[8],view=new DataView(rec.buffer,rec.byteOffset,rec.byteLength);
+      if(type===0){matchLength=view.getInt32(92,true);orientation=view.getInt32(548,true)<0?-1:1;}
+      else if(type===1){current={score1:view.getInt32(12,true),score2:view.getInt32(16,true),crawford:!!view.getUint8(20),gameNumber:view.getInt32(48,true)};}
+      else if((type===2||type===3)&&current){
+        const analysis=type===3?parseMoveAnalysis(rec):parseCubeAnalysis(rec);
+        if(analysis){
+          const variant=variantFromGame(matchLength,current.score1,current.score2,current.crawford,orientation);
+          if(variant)results.push({variant,...analysis,matchLength,gameScore:[current.score1,current.score2],crawford:current.crawford,gameNumber:current.gameNumber});
+        }
+      }
+    }
+    if(!results.length)throw new Error("XGの解析結果が見つかりません。XG2でBatch Analyze後に保存してください。");
+    return results;
+  }
+
   function cubeDisplay(cubeA){
     const n=Number(cubeA)||0;if(n===0)return {cubeValue:1,cubeOwner:"center"};
     return {cubeValue:Math.pow(2,Math.abs(n)),cubeOwner:n>0?"black":"white"};
   }
-  function titleFromParsed(parsed){
-    const save=readWideString(parsed.richPrefix,2088,2048).trim();
-    return save.replace(/\s*\/\s*(UNLIMITED|DMP|BLACK\s+.+)$/i,"").trim();
-  }
-  async function parseAnalyzedPackage(input){
+
+  async function parseAnalyzedPackageMany(input){
     const parsed=await parsePackage(input);
     const main=parsed.entries.find(e=>e.name.toLowerCase()==="temp.xg");
-    if(!main)throw new Error("XG/XGP内にtemp.xgがありません。");
-    return {parsed,analysis:parseAnalyzedStream(main.bytes),title:titleFromParsed(parsed)};
+    if(!main)throw new Error("XG内にtemp.xgがありません。");
+    return {parsed,analyses:parseAnalyzedStreamMany(main.bytes)};
   }
 
   async function buildScoreMapJson(inputs,options={}){
-    if(!Array.isArray(inputs)||inputs.length!==34)throw new Error("解析済みXGPを34個選択してください。");
-    const found=new Map();let recoveredTitle="";let boardSource=null;
+    if(!Array.isArray(inputs)||inputs.length!==2)throw new Error("解析済みXGを2ファイル選択してください。");
+    const found=new Map();let boardSource=null;
     for(const item of inputs){
-      const variant=expectedVariantForName(item.name);
-      if(!variant)throw new Error(`ファイル名を識別できません: ${item.name}`);
-      const key=variantKey(variant);if(found.has(key))throw new Error(`同じ条件のファイルが重複しています: ${item.name}`);
       let parsed;
-      try{parsed=await parseAnalyzedPackage(item.buffer)}catch(error){throw new Error(`${item.name}: ${error.message}`)}
-      if(!recoveredTitle&&parsed.title)recoveredTitle=parsed.title;
-      found.set(key,{variant,...parsed.analysis});
-      if(variant.black==="5a"&&variant.white==="5a")boardSource=parsed.analysis;
+      try{parsed=await parseAnalyzedPackageMany(item.buffer)}catch(error){throw new Error(`${item.name}: ${error.message}`)}
+      for(const analysis of parsed.analyses){
+        const key=variantKey(analysis.variant);
+        if(found.has(key))throw new Error(`同じ条件の解析結果が重複しています: ${key}`);
+        found.set(key,analysis);
+        if(analysis.variant.black==="5a"&&analysis.variant.white==="5a")boardSource=analysis;
+      }
     }
     const expected=makeVariants().map(variantKey),missing=expected.filter(k=>!found.has(k));
     if(missing.length)throw new Error(`不足している条件があります: ${missing.join(', ')}`);
+    if(found.size!==34)throw new Error(`解析結果数が34ではありません: ${found.size}`);
     boardSource=boardSource||found.values().next().value;
     const cube=cubeDisplay(boardSource.cubeA);
     const results={};
@@ -678,7 +785,7 @@ window.ScoreMapXGBatch = (() => {
     return {
       schemaVersion:1,
       id:"001",
-      title:String(options.title||recoveredTitle||"").trim(),
+      title:String(options.title||"").trim(),
       generatedAt:new Date().toISOString(),
       source:"eXtreme Gammon 2",
       board:{points:boardSource.position,dice:boardSource.dice,cubeValue:cube.cubeValue,cubeOwner:cube.cubeOwner,matchLength:5,blackScore:0,whiteScore:0,crawford:false},

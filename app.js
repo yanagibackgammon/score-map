@@ -20,7 +20,7 @@ function renderTable(data){
   const table=document.getElementById("score-table"),legend=document.getElementById("legend");
   const moves=[...new Set(Object.values(data.results||{}).map(v=>v?.best).filter(Boolean))];
   const colors=new Map(moves.map((m,i)=>[m,palette[i%palette.length]]));
-  const axisLabel=a=>`<span class="axis-label axis-label-desktop">${a.html||a.label}</span><span class="axis-label axis-label-mobile">${a.short}</span>`;
+  const axisLabel=a=>`<span class="axis-label">${a.short}</span>`;
   let html='<thead><tr><th class="corner" aria-hidden="true"></th>'+AXES.map(a=>`<th class="white-axis">${axisLabel(a)}</th>`).join('')+'</tr></thead><tbody>';
   for(const r of AXES){
     html+=`<tr><th class="black-axis">${axisLabel(r)}</th>`;

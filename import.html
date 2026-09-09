@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#ffffff">
   <title>Score Map | YANAGI Backgammon</title>
-  <link rel="stylesheet" href="styles.css?v=16">
+  <link rel="stylesheet" href="styles.css?v=17">
 </head>
 <body>
   <header class="page-header">
@@ -23,8 +23,8 @@
 
   <main class="import-main workflow-main">
     <section class="workflow-step">
-      <h2 class="step-title">① 元ポジションを入力</h2>
-      <p class="step-description">元ポジションは、XG / XGPファイルまたはXGIDのどちらか一方で指定します。盤面・手番・出目・キューブ状態を34条件の基準にします。</p>
+      <h2 class="step-title">① 解析用XGを作成</h2>
+      <p class="step-description">元ポジションをXG / XGPファイルまたはXGIDで指定し、XG2のBatch Analyze用ファイルを作成します。Match Playの33条件は1本の5-point XG matchにまとめ、UnlimitedだけはXG形式上マッチ長が異なるため別のXGとして同じZIPに入れます。</p>
       <div class="io-area">
         <div class="io-heading">入力</div>
         <label class="field-label">元XG / XGP</label>
@@ -40,29 +40,25 @@
         <textarea id="xgid-input" class="xgid-input" rows="3" spellcheck="false" placeholder="XGID=... を貼り付け"></textarea>
         <div id="xgid-info" class="file-info">未入力</div>
       </div>
-    </section>
-
-    <section class="workflow-step">
-      <h2 class="step-title">② 34解析ファイルを出力</h2>
-      <p class="step-description">①の元ポジションからスコア条件だけを変更した34個のXGPをZIPで出力します。ZIPを展開し、各ファイルをXGで解析して上書き保存してください。</p>
       <div class="io-area io-output">
         <div class="io-heading">出力</div>
-        <button id="batch-button" class="primary-button" type="button" disabled>34 XGPをZIP出力</button>
+        <button id="batch-button" class="primary-button" type="button" disabled>解析用XGセットを出力</button>
+        <p class="output-note">ZIPを展開し、XG2の「Analyze → Batch Analyze」で <strong>score-map-match.xg</strong> と <strong>score-map-unlimited.xg</strong> の2ファイルをまとめて選択してください。「Save Games after analyze」を有効にして解析結果を保存します。</p>
         <p class="import-status" id="batch-status" hidden></p>
       </div>
     </section>
 
     <section class="workflow-step">
-      <h2 class="step-title">③ 解析済み34XGPからJSONを作成</h2>
-      <p class="step-description">XGで解析・保存した34個のXGPをまとめて選択します。最善手・候補手・エクイティを読み取り、公開用JSONを作成します。</p>
+      <h2 class="step-title">② 解析済みXGからJSONを作成</h2>
+      <p class="step-description">Batch Analyze後に保存された2つのXGをまとめて選択します。33条件＋Unlimitedの解析結果を読み取り、公開ページ用JSONを作成します。</p>
       <div class="io-area">
         <div class="io-heading">入力</div>
-        <label class="field-label">解析済み34 XGP</label>
+        <label class="field-label">解析済みXG</label>
         <div id="analyzed-zone" class="drop-zone compact-drop" tabindex="0" role="button">
-          <strong>34個のXGPをまとめて選択</strong>
-          <input id="analyzed-input" type="file" accept=".xg,.xgp" multiple hidden>
+          <strong>解析済みXGを2ファイル選択</strong>
+          <input id="analyzed-input" type="file" accept=".xg" multiple hidden>
         </div>
-        <div id="analyzed-info" class="file-info">0 / 34</div>
+        <div id="analyzed-info" class="file-info">0 / 2</div>
         <button id="json-button" class="primary-button" type="button" disabled>JSONを生成</button>
         <p class="import-status" id="json-status" hidden></p>
       </div>
@@ -73,8 +69,8 @@
     </section>
 
     <section class="workflow-step">
-      <h2 class="step-title">④ ポジションタイトル設定・公開</h2>
-      <p class="step-description">公開ページに表示するタイトルを設定します。JSONを保存するか、そのままGitHubへ反映できます。</p>
+      <h2 class="step-title">③ ポジションタイトル設定・公開</h2>
+      <p class="step-description">公開ページに表示するポジションタイトルを設定します。JSONを保存するか、そのままGitHubへ反映できます。</p>
       <div class="io-area">
         <div class="io-heading">入力</div>
         <label class="field-label" for="title-input">ポジションタイトル</label>
@@ -95,7 +91,7 @@
     </section>
   </main>
 
-  <script src="xg-batch.js?v=16"></script>
-  <script src="import.js?v=16"></script>
+  <script src="xg-batch.js?v=17"></script>
+  <script src="import.js?v=17"></script>
 </body>
 </html>
