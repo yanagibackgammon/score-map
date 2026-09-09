@@ -140,3 +140,27 @@ main{width:min(1580px,calc(100% - 32px));margin:0 auto;padding:18px 0 48px}
 .xgid-input{display:block;width:100%;min-height:82px;resize:vertical;padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:#fff;color:#111;font:12px/1.5 Consolas,"SFMono-Regular",monospace;outline:none}
 .xgid-input:focus{border-color:var(--theme);box-shadow:0 0 0 2px rgba(183,146,75,.12)}
 .output-note{margin:10px 0 0;color:#596167;font-size:12px;line-height:1.65}
+
+/* v19: compact score-by-score XGID copy map */
+.xgid-map-wrap{width:100%;overflow:hidden;background:#fff}
+.xgid-score-table{width:100%;border-collapse:separate;border-spacing:1px;table-layout:fixed;background:#fff}
+.xgid-score-table th,.xgid-score-table td{height:44px;padding:0;border:1px solid #c8cdd1;text-align:center;vertical-align:middle}
+.xgid-score-table .xgid-corner{width:42px;background:#fff}
+.xgid-score-table .xgid-white-axis{background:#fff;color:#111;font-size:11px;font-weight:900}
+.xgid-score-table .xgid-black-axis{width:42px;background:#000;color:#fff;font-size:11px;font-weight:900}
+.xgid-cell{position:relative;background:#fafafa}
+.xgid-cell.invalid{background:#f2f3f4;background-image:linear-gradient(135deg,transparent 49%,#c7ccd0 50%,transparent 51%)}
+.xgid-cell.excluded{background:#f5f6f7;color:#a5abb0;font-size:15px;font-weight:700}
+.xgid-copy{width:100%;height:100%;display:flex;align-items:center;justify-content:center;border:0;background:transparent;color:var(--active);cursor:pointer}
+.xgid-copy:hover{background:#f6f0e5}
+.xgid-copy:focus-visible{outline:2px solid var(--theme);outline-offset:-3px}
+.xgid-copy svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.xgid-copy.copied{background:#efe5d2;color:#3f602f}
+.xgid-map-summary{margin-top:9px;color:#50575c;font-size:11px;line-height:1.5;text-align:right}
+@media(max-width:720px){
+  .xgid-score-table th,.xgid-score-table td{height:38px}
+  .xgid-score-table .xgid-corner,.xgid-score-table .xgid-black-axis{width:34px}
+  .xgid-score-table .xgid-white-axis,.xgid-score-table .xgid-black-axis{font-size:10px}
+  .xgid-copy svg{width:16px;height:16px}
+  .xgid-map-summary{text-align:left}
+}

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#ffffff">
   <title>Score Map | YANAGI Backgammon</title>
-  <link rel="stylesheet" href="styles.css?v=17">
+  <link rel="stylesheet" href="styles.css?v=19">
 </head>
 <body>
   <header class="page-header">
@@ -23,42 +23,37 @@
 
   <main class="import-main workflow-main">
     <section class="workflow-step">
-      <h2 class="step-title">① 解析用XGを作成</h2>
-      <p class="step-description">元ポジションをXG / XGPファイルまたはXGIDで指定し、34条件それぞれを独立したCube Action用XGとして作成します。</p>
+      <h2 class="step-title">① 解析用XGIDを作成</h2>
+      <p class="step-description">元ポジションのXGIDを1つ入力すると、同じ盤面・キューブ状態のままスコアだけを変え、ダブルアクション解析が必要なXGIDを一覧化します。UnlimitedはJacobyなし・Beaverなしで固定します。各セルのコピーアイコンからXGIDをコピーし、XG2へ貼り付けて「Double Action」を解析してください。</p>
       <div class="io-area">
         <div class="io-heading">入力</div>
-        <label class="field-label">元XG / XGP</label>
-        <div id="drop-zone" class="drop-zone compact-drop" tabindex="0" role="button">
-          <strong>XG / XGPを選択</strong>
-          <input id="file-input" type="file" accept=".xg,.xgp" hidden>
-        </div>
-        <div id="file-info" class="file-info">未選択</div>
-
-        <div class="input-or">または</div>
-
-        <label class="field-label" for="xgid-input">XGID</label>
+        <label class="field-label" for="xgid-input">元XGID</label>
         <textarea id="xgid-input" class="xgid-input" rows="3" spellcheck="false" placeholder="XGID=... を貼り付け"></textarea>
         <div id="xgid-info" class="file-info">未入力</div>
+        <button id="xgid-generate-button" class="primary-button" type="button" disabled>スコア別XGIDを作成</button>
+        <p class="import-status" id="xgid-status" hidden></p>
       </div>
       <div class="io-area io-output">
         <div class="io-heading">出力</div>
-        <button id="batch-button" class="primary-button" type="button" disabled>ダブルアクション解析用XG（34件）を出力</button>
-        <p class="output-note">ZIPを展開し、XG2の「Analyze → Batch Analyze」で34個のXGをすべて選択してください。「Save Games after analyze」を有効にして解析結果を各XGへ保存します。Crawford / DMPはキューブ使用不可のため、XGが解析しない場合でもJSON作成時にNo Doubleとして補完します。</p>
-        <p class="import-status" id="batch-status" hidden></p>
+        <div class="xgid-map-wrap">
+          <table id="xgid-score-table" class="xgid-score-table" aria-label="Score Map XGID copy table"></table>
+        </div>
+        <div class="xgid-map-summary" id="xgid-map-summary">XGIDを入力してください。</div>
+        <p class="output-note">Crawford・DMPのほか、現在のキューブ値ですでに自分のマッチ勝利に必要な点数へ到達している条件は、リダブルしても自分に利益がないため解析対象から除外します。UnlimitedのXGIDはJacoby OFF・Beaver OFFです。</p>
       </div>
     </section>
 
     <section class="workflow-step">
-      <h2 class="step-title">② 解析済みXGからJSONを作成</h2>
-      <p class="step-description">Batch Analyze後に保存された34個のXGをまとめて選択します。各ファイルのダブルアクション解析結果を読み取り、公開ページ用JSONを作成します。</p>
+      <h2 class="step-title">② 解析済みファイルからJSONを作成</h2>
+      <p class="step-description">①でコピーしたXGIDをXG2で順番に開き、Double Action解析後にXGまたはXGPで保存します。解析対象として表示された条件のファイルをまとめて選択すると、解析不要条件をNo Doubleで補完して公開用JSONを作成します。</p>
       <div class="io-area">
         <div class="io-heading">入力</div>
-        <label class="field-label">解析済みXG</label>
+        <label class="field-label">解析済みXG / XGP</label>
         <div id="analyzed-zone" class="drop-zone compact-drop" tabindex="0" role="button">
-          <strong>解析済みXGを34ファイル選択</strong>
-          <input id="analyzed-input" type="file" accept=".xg" multiple hidden>
+          <strong>解析済みファイルをまとめて選択</strong>
+          <input id="analyzed-input" type="file" accept=".xg,.xgp" multiple hidden>
         </div>
-        <div id="analyzed-info" class="file-info">0 / 34</div>
+        <div id="analyzed-info" class="file-info">解析用XGIDを先に作成してください</div>
         <button id="json-button" class="primary-button" type="button" disabled>JSONを生成</button>
         <p class="import-status" id="json-status" hidden></p>
       </div>
@@ -91,7 +86,7 @@
     </section>
   </main>
 
-  <script src="xg-batch.js?v=18"></script>
-  <script src="import.js?v=18"></script>
+  <script src="xg-batch.js?v=19"></script>
+  <script src="import.js?v=19"></script>
 </body>
 </html>

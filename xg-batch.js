@@ -383,7 +383,7 @@ window.ScoreMapXGBatch = (() => {
     const cubePos = cubePosBottom * turn;
     const playerScore = turn===1 ? scoreBottom : scoreTop;
     const oppScore = turn===1 ? scoreTop : scoreBottom;
-    return {raw:`XGID=${raw}`,points,cubeExp,cubePos,turn,dice,diceText,playerScore,oppScore,rules,matchLength,maxCube};
+    return {raw:`XGID=${raw}`,rawBody:raw,positionText,cubeExp,cubePosBottom,cubePos,turn,dice,diceText,playerScore,oppScore,rules,matchLength,maxCube};
   }
 
   function writePosition(bytes, offset, points) {
@@ -785,7 +785,7 @@ window.ScoreMapXGBatch = (() => {
   }
 
   function variantFromGame(matchLength,score1,score2,crawford,orientation){
-    if(matchLength===99999)return makeVariants().find(v=>v.unlimited);
+    if(matchLength===99999||matchLength===0)return makeVariants().find(v=>v.unlimited);
     const blackScore=orientation>0?score1:score2;
     const whiteScore=orientation>0?score2:score1;
     if(blackScore===4&&whiteScore===4&&!crawford)return makeVariants().find(v=>v.dmp);
@@ -865,44 +865,113 @@ window.ScoreMapXGBatch = (() => {
     };
   }
 
+  function awayForAxis(axis){
+    if(axis==="PC"||axis==="C")return 1;
+    return Number(String(axis).replace("a",""));
+  }
+
+  function xgidEligibility(source,variant){
+    if(variant.crawford)return {eligible:false,reason:"Crawford"};
+    if(variant.dmp)return {eligible:false,reason:"DMP"};
+    if(source.cubePos<0)return {eligible:false,reason:"相手キューブ"};
+    if(Number.isFinite(source.maxCube)&&source.maxCube>=0&&source.cubeExp>=source.maxCube)return {eligible:false,reason:"最大キューブ"};
+    if(!variant.unlimited){
+      const cubeValue=Math.pow(2,Math.max(0,source.cubeExp));
+      const ownAway=awayForAxis(variant.black);
+      if(cubeValue>=ownAway)return {eligible:false,reason:"ダブル不要"};
+    }
+    return {eligible:true,reason:""};
+  }
+
+  function buildVariantXgid(source,variant){
+    const blackScore=variant.unlimited?0:scoreForAxis(variant.black);
+    const whiteScore=variant.unlimited?0:scoreForAxis(variant.white);
+    const bottomScore=source.turn===1?blackScore:whiteScore;
+    const topScore=source.turn===1?whiteScore:blackScore;
+    // Unlimited: rules=0 => Jacoby OFF / Beaver OFF.
+    // Match play: this field is the Crawford flag.
+    const rules=variant.unlimited?0:(variant.crawford?1:0);
+    const matchLength=variant.unlimited?0:5;
+    const fields=[
+      source.positionText,
+      source.cubeExp,
+      source.cubePosBottom,
+      source.turn,
+      "00",
+      bottomScore,
+      topScore,
+      rules,
+      matchLength,
+      source.maxCube
+    ];
+    return `XGID=${fields.join(":")}`;
+  }
+
+  function generateScoreXgids(value){
+    const source=parseXgid(value);
+    const items=makeVariants().map(variant=>{
+      const status=xgidEligibility(source,variant);
+      return {
+        variant,
+        key:variantKey(variant),
+        eligible:status.eligible,
+        reason:status.reason,
+        xgid:status.eligible?buildVariantXgid(source,variant):null
+      };
+    });
+    return {
+      source,
+      items,
+      eligibleCount:items.filter(x=>x.eligible).length,
+      excludedCount:items.filter(x=>!x.eligible).length
+    };
+  }
+
   async function buildScoreMapJson(inputs,options={}){
-    if(!Array.isArray(inputs)||inputs.length!==34)throw new Error("解析済みXGを34ファイル選択してください。");
+    const plan=options.plan||null;
+    const expectedItems=plan?.items||makeVariants().map(variant=>({variant,key:variantKey(variant),eligible:!(variant.crawford||variant.dmp),reason:""}));
+    const activeItems=expectedItems.filter(x=>x.eligible);
+    if(!Array.isArray(inputs)||inputs.length!==activeItems.length){
+      throw new Error(`解析済みXG / XGPを${activeItems.length}ファイル選択してください。`);
+    }
+    const activeKeys=new Set(activeItems.map(x=>x.key));
     const found=new Map();let boardSource=null;
-    const pendingUnavailable=[];
     for(const item of inputs){
       let parsed;
       try{parsed=await parseAnalyzedPackageSingle(item.buffer)}catch(error){throw new Error(`${item.name}: ${error.message}`)}
       const key=variantKey(parsed.variant);
-      if(found.has(key)||pendingUnavailable.some(x=>variantKey(x.variant)===key))throw new Error(`同じ条件のXGが重複しています: ${key}`);
-      if(parsed.analysis){
-        if(parsed.analysis.type!=="cube")throw new Error(`${item.name}: ダブルアクションとして解析されていません。`);
-        found.set(key,parsed.analysis);
-        if(parsed.variant.black==="5a"&&parsed.variant.white==="5a")boardSource=parsed.analysis;
-      }else if(parsed.variant.crawford||parsed.variant.dmp){
-        pendingUnavailable.push(parsed);
+      if(!activeKeys.has(key))throw new Error(`${item.name}: ①で解析対象外にしたスコア条件です (${key})。`);
+      if(found.has(key))throw new Error(`同じ条件のXG/XGPが重複しています: ${key}`);
+      if(!parsed.analysis)throw new Error(`${item.name}: ダブルアクションの解析結果がありません。XG2でDouble Action解析後に保存してください。`);
+      if(parsed.analysis.type!=="cube")throw new Error(`${item.name}: ダブルアクションとして解析されていません。`);
+      found.set(key,parsed.analysis);
+      if(!boardSource)boardSource=parsed.analysis;
+    }
+    const missing=activeItems.map(x=>x.key).filter(k=>!found.has(k));
+    if(missing.length)throw new Error(`不足している解析条件があります: ${missing.join(', ')}`);
+
+    const sourceXgid=plan?.source||null;
+    if(!boardSource&&sourceXgid){
+      boardSource={position:sourceXgid.points,dice:[],cubeA:sourceXgid.cubePos*sourceXgid.cubeExp};
+    }
+    if(!boardSource?.position)throw new Error("公開用盤面を取得できません。");
+
+    const results={};
+    for(const item of expectedItems){
+      if(item.eligible){
+        const a=found.get(item.key);
+        results[item.key]={best:a.best,equity:a.equity,candidates:a.candidates,type:"cube"};
       }else{
-        throw new Error(`${item.name}: ダブルアクションの解析結果がありません。XG2のBatch Analyzeで「Save Games after analyze」を有効にして再解析してください。`);
+        results[item.key]={best:"No Double",equity:null,candidates:[],type:"cube",cubeUnavailable:true,reason:item.reason||"解析不要"};
       }
     }
-    if(!boardSource){
-      const live=[...found.values()][0];
-      if(live)boardSource=live;
-    }
-    for(const item of pendingUnavailable){
-      const key=variantKey(item.variant);
-      found.set(key,cubeUnavailableResult(item.variant,boardSource));
-    }
-    const expected=makeVariants().map(variantKey),missing=expected.filter(k=>!found.has(k));
-    if(missing.length)throw new Error(`不足している条件があります: ${missing.join(', ')}`);
-    if(found.size!==34)throw new Error(`解析結果数が34ではありません: ${found.size}`);
-    boardSource=boardSource||found.values().next().value;
-    if(!boardSource?.position)throw new Error("公開用盤面を解析結果から取得できません。");
-    const cube=cubeDisplay(boardSource.cubeA);
-    const results={};
-    for(const key of expected){
-      const a=found.get(key);
-      results[key]={best:a.best,equity:a.equity,candidates:a.candidates,type:"cube"};
-      if(a.synthetic)results[key].cubeUnavailable=true;
+
+    let cube;
+    if(sourceXgid){
+      const value=Math.pow(2,Math.max(0,sourceXgid.cubeExp));
+      cube={cubeValue:value,cubeOwner:sourceXgid.cubePos===0?"center":sourceXgid.cubePos>0?"black":"white"};
+    }else{
+      cube=cubeDisplay(boardSource.cubeA);
     }
     return {
       schemaVersion:1,
@@ -916,5 +985,6 @@ window.ScoreMapXGBatch = (() => {
   }
 
 
-  return {generateBatch, makeVariants, buildScoreMapJson, parseXgid};
+
+  return {generateBatch, makeVariants, buildScoreMapJson, parseXgid, generateScoreXgids, variantKey};
 })();
