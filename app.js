@@ -14,12 +14,28 @@ const FALLBACK={
 };
 const invalid=(r,c)=>(r==="pc"&&c==="c")||(r==="c"&&c==="pc");
 const keyFor=(r,c)=>r==="pc"&&c==="pc"?"unlimited":r==="c"&&c==="c"?"dmp":`${r}-${c}`;
-const palette=["#4f6f52","#665c3a","#4c6174","#6d4f62","#5e5b7a","#704e43","#3f6766","#685a41","#4f536d"];
+const ACTION_COLORS={
+  noDouble:"#CCFFFF",
+  doubleTake:"#CCFFCC",
+  doublePass:"#FFFFCC",
+  tooGood:"#FFCCCC",
+  other:"#E5E7EB"
+};
+function actionColor(action){
+  const value=String(action||"").toLowerCase().replace(/\s+/g,"");
+  if(value.includes("toogood"))return ACTION_COLORS.tooGood;
+  if(value.includes("/pass"))return ACTION_COLORS.doublePass;
+  if(value.includes("/take")){
+    if(value.startsWith("no")||value.includes("nodouble")||value.includes("noredouble"))return ACTION_COLORS.noDouble;
+    return ACTION_COLORS.doubleTake;
+  }
+  if(value.includes("nodouble")||value.includes("noredouble"))return ACTION_COLORS.noDouble;
+  return ACTION_COLORS.other;
+}
 async function load(){try{const res=await fetch("data/positions/001.json",{cache:"no-store"});if(!res.ok)throw 0;return await res.json()}catch{return FALLBACK}}
 function renderTable(data){
   const table=document.getElementById("score-table"),legend=document.getElementById("legend");
   const moves=[...new Set(Object.values(data.results||{}).map(v=>v?.best).filter(Boolean))];
-  const colors=new Map(moves.map((m,i)=>[m,palette[i%palette.length]]));
   const axisLabel=a=>`<span class="axis-label">${a.short}</span>`;
   let html='<thead><tr><th class="corner" aria-hidden="true"></th>'+AXES.map(a=>`<th class="white-axis">${axisLabel(a)}</th>`).join('')+'</tr></thead><tbody>';
   for(const r of AXES){
@@ -32,13 +48,13 @@ function renderTable(data){
         html+=`<td class="score-cell invalid" aria-label="not applicable">${note}</td>`;
         continue;
       }
-      const k=keyFor(r.key,c.key),item=(data.results||{})[k]||{},best=item.best||"—",bg=item.best?colors.get(item.best):"";
+      const k=keyFor(r.key,c.key),item=(data.results||{})[k]||{},best=item.best||"—",bg=item.best?actionColor(item.best):"";
       html+=`<td class="score-cell ${item.best?'':'empty'}" ${item.best?`data-move="${best.replace(/"/g,'&quot;')}" style="background:${bg}"`:''}><span class="move">${best}</span></td>`;
     }
     html+='</tr>';
   }
   html+='</tbody>';table.innerHTML=html;
-  legend.innerHTML=moves.length?moves.map(m=>`<span class="legend-item"><span class="legend-swatch" style="background:${colors.get(m)}"></span>${m}</span>`).join(''):'';
+  legend.innerHTML=moves.length?moves.map(m=>`<span class="legend-item"><span class="legend-swatch" style="background:${actionColor(m)}"></span>${m}</span>`).join(''):'';
 }
 (async()=>{
   const data=await load();

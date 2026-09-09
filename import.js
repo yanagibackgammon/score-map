@@ -97,8 +97,8 @@ function resetAfterPlan(){
 }
 function updateAnalyzedState(){
   const required=generatedPlan?.eligibleCount||0;
-  analyzedInfo.textContent=generatedPlan?`${analyzedFiles.length} / ${required}`:'解析用XGIDを先に作成してください';
-  jsonButton.disabled=!(generatedPlan&&required>0&&analyzedFiles.length===required);
+  analyzedInfo.textContent=generatedPlan?`${analyzedFiles.length} / 最大 ${required}`:'解析用XGIDを先に作成してください';
+  jsonButton.disabled=!(generatedPlan&&required>0&&analyzedFiles.length>0&&analyzedFiles.length<=required);
 }
 function finalJsonText(){
   if(!generatedData)return '';
@@ -137,20 +137,20 @@ wireDrop(analyzedZone,analyzedInput,files=>{
   analyzedFiles=files.filter(isAnalyzedFile);
   generatedData=null;jsonPreview.value='';downloadJsonButton.disabled=true;publishButton.disabled=true;publicLink.hidden=true;
   clearStatus(jsonStatus);clearStatus(publishStatus);updateAnalyzedState();
-  if(files.length&&generatedPlan&&analyzedFiles.length!==generatedPlan.eligibleCount){
-    showStatus(jsonStatus,`①で解析対象になった${generatedPlan.eligibleCount}ファイルをまとめて選択してください。`,true);
+  if(files.length&&generatedPlan&&analyzedFiles.length>generatedPlan.eligibleCount){
+    showStatus(jsonStatus,`①の解析対象は最大${generatedPlan.eligibleCount}件です。対象ファイルだけを選択してください。`,true);
   }
 });
 
 jsonButton.addEventListener('click',async()=>{
-  if(!generatedPlan||analyzedFiles.length!==generatedPlan.eligibleCount)return;
+  if(!generatedPlan||analyzedFiles.length<1||analyzedFiles.length>generatedPlan.eligibleCount)return;
   jsonButton.disabled=true;showStatus(jsonStatus,'ダブルアクション解析結果を読み取っています…');
   try{
     const inputs=[];
     for(const file of analyzedFiles)inputs.push({name:file.name,buffer:await file.arrayBuffer()});
     generatedData=await ScoreMapXGBatch.buildScoreMapJson(inputs,{title:'',plan:generatedPlan});
     generatedData.title='';refreshFinalState();
-    showStatus(jsonStatus,`${generatedPlan.eligibleCount}件の解析結果を読み込み、除外条件をNo Doubleで補完してJSONを生成しました。`);
+    showStatus(jsonStatus,`${analyzedFiles.length}件の解析結果だけでJSONを生成しました。未入力・解析対象外のスコアは空欄のままです。`);
   }catch(error){console.error(error);generatedData=null;jsonPreview.value='';downloadJsonButton.disabled=true;publishButton.disabled=true;showStatus(jsonStatus,error?.message||'JSON生成に失敗しました。',true)}
   finally{updateAnalyzedState()}
 });

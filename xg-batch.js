@@ -931,8 +931,11 @@ window.ScoreMapXGBatch = (() => {
     const plan=options.plan||null;
     const expectedItems=plan?.items||makeVariants().map(variant=>({variant,key:variantKey(variant),eligible:!(variant.crawford||variant.dmp),reason:""}));
     const activeItems=expectedItems.filter(x=>x.eligible);
-    if(!Array.isArray(inputs)||inputs.length!==activeItems.length){
-      throw new Error(`解析済みXG / XGPを${activeItems.length}ファイル選択してください。`);
+    if(!Array.isArray(inputs)||inputs.length<1){
+      throw new Error("解析済みXG / XGPを1ファイル以上選択してください。");
+    }
+    if(inputs.length>activeItems.length){
+      throw new Error(`解析済みXG / XGPは最大${activeItems.length}ファイルまで選択できます。`);
     }
     const activeKeys=new Set(activeItems.map(x=>x.key));
     const found=new Map();let boardSource=null;
@@ -947,9 +950,6 @@ window.ScoreMapXGBatch = (() => {
       found.set(key,parsed.analysis);
       if(!boardSource)boardSource=parsed.analysis;
     }
-    const missing=activeItems.map(x=>x.key).filter(k=>!found.has(k));
-    if(missing.length)throw new Error(`不足している解析条件があります: ${missing.join(', ')}`);
-
     const sourceXgid=plan?.source||null;
     if(!boardSource&&sourceXgid){
       boardSource={position:sourceXgid.points,dice:[],cubeA:sourceXgid.cubePos*sourceXgid.cubeExp};
@@ -958,12 +958,8 @@ window.ScoreMapXGBatch = (() => {
 
     const results={};
     for(const item of expectedItems){
-      if(item.eligible){
-        const a=found.get(item.key);
-        results[item.key]={best:a.best,equity:a.equity,candidates:a.candidates,type:"cube"};
-      }else{
-        results[item.key]={best:"No Double",equity:null,candidates:[],type:"cube",cubeUnavailable:true,reason:item.reason||"解析不要"};
-      }
+      const a=found.get(item.key);
+      if(a)results[item.key]={best:a.best,equity:a.equity,candidates:a.candidates,type:"cube"};
     }
 
     let cube;

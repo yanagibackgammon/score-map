@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#ffffff">
   <title>Score Map | YANAGI Backgammon</title>
-  <link rel="stylesheet" href="styles.css?v=19">
+  <link rel="stylesheet" href="styles.css?v=21">
 </head>
 <body>
   <header class="page-header">
@@ -45,7 +45,7 @@
 
     <section class="workflow-step">
       <h2 class="step-title">② 解析済みファイルからJSONを作成</h2>
-      <p class="step-description">①でコピーしたXGIDをXG2で順番に開き、Double Action解析後にXGまたはXGPで保存します。解析対象として表示された条件のファイルをまとめて選択すると、解析不要条件をNo Doubleで補完して公開用JSONを作成します。</p>
+      <p class="step-description">①でコピーしたXGIDをXG2で順番に開き、Double Action解析後にXGまたはXGPで保存します。解析済みのファイルだけを選択すると、その条件だけを公開用JSONへ反映します。未入力・解析対象外のスコアは空欄のままです。</p>
       <div class="io-area">
         <div class="io-heading">入力</div>
         <label class="field-label">解析済みXG / XGP</label>
@@ -86,7 +86,7 @@
     </section>
   </main>
 
-  <script src="xg-batch.js?v=19"></script>
-  <script src="import.js?v=19"></script>
+  <script src="xg-batch.js?v=21"></script>
+  <script src="import.js?v=21"></script>
 </body>
 </html>
