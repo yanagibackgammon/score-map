@@ -1,0 +1,473 @@
+{
+  "schemaVersion": 1,
+  "id": "005",
+  "title": "4ロール×4ロール　1空き",
+  "generatedAt": "2026-09-09T16:39:40.634Z",
+  "source": "eXtreme Gammon 2",
+  "analysisTargets": [
+    "unlimited",
+    "3-pc",
+    "3-2",
+    "3-3",
+    "3-4",
+    "3-5",
+    "4-pc",
+    "4-2",
+    "4-3",
+    "4-4",
+    "4-5",
+    "5-pc",
+    "5-2",
+    "5-3",
+    "5-4",
+    "5-5"
+  ],
+  "automaticTargets": [
+    "3-pc",
+    "3-2",
+    "4-pc",
+    "4-2",
+    "5-pc",
+    "5-2"
+  ],
+  "board": {
+    "points": [
+      0,
+      0,
+      8,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      -8,
+      0,
+      0
+    ],
+    "dice": [],
+    "cubeValue": 2,
+    "cubeOwner": "black",
+    "maxCube": 10,
+    "matchLength": 5,
+    "blackScore": 0,
+    "whiteScore": 0,
+    "crawford": false
+  },
+  "results": {
+    "unlimited": {
+      "best": "No Double",
+      "equity": 0.547223,
+      "candidates": [
+        {
+          "move": "No Double",
+          "equity": 0.547223,
+          "diff": 0,
+          "analysisLevel": "XGRoller++"
+        },
+        {
+          "move": "Double / Take",
+          "equity": 0.541484,
+          "diff": 0.005739,
+          "analysisLevel": "XGRoller++"
+        },
+        {
+          "move": "Double / Pass",
+          "equity": 1,
+          "diff": -0.452777,
+          "analysisLevel": "XGRoller++"
+        }
+      ],
+      "type": "cube"
+    },
+    "3-pc": {
+      "best": "Double / Pass",
+      "equity": 1,
+      "candidates": [
+        {
+          "move": "No Double",
+          "equity": 0.884392,
+          "diff": 0.115608,
+          "analysisLevel": "3-ply"
+        },
+        {
+          "move": "Double / Take",
+          "equity": 1.712213,
+          "diff": -0.712213,
+          "analysisLevel": "3-ply"
+        },
+        {
+          "move": "Double / Pass",
+          "equity": 1,
+          "diff": 0,
+          "analysisLevel": "3-ply"
+        }
+      ],
+      "type": "cube"
+    },
+    "3-2": {
+      "best": "Double / Pass",
+      "equity": 1,
+      "candidates": [
+        {
+          "move": "No Double",
+          "equity": 0.804387,
+          "diff": 0.195613,
+          "analysisLevel": "3-ply"
+        },
+        {
+          "move": "Double / Take",
+          "equity": 1.002047,
+          "diff": -0.002047,
+          "analysisLevel": "3-ply"
+        },
+        {
+          "move": "Double / Pass",
+          "equity": 1,
+          "diff": 0,
+          "analysisLevel": "3-ply"
+        }
+      ],
+      "type": "cube"
+    },
+    "3-3": {
+      "best": "Double / Take",
+      "equity": 0.710054,
+      "candidates": [
+        {
+          "move": "No Double",
+          "equity": 0.625503,
+          "diff": 0.084551,
+          "analysisLevel": "XGRoller++"
+        },
+        {
+          "move": "Double / Take",
+          "equity": 0.710054,
+          "diff": 0,
+          "analysisLevel": "XGRoller++"
+        },
+        {
+          "move": "Double / Pass",
+          "equity": 1,
+          "diff": -0.289946,
+          "analysisLevel": "XGRoller++"
+        }
+      ],
+      "type": "cube"
+    },
+    "3-4": {
+      "best": "No Double",
+      "equity": 0.516031,
+      "candidates": [
+        {
+          "move": "No Double",
+          "equity": 0.516031,
+          "diff": 0,
+          "analysisLevel": "XGRoller++"
+        },
+        {
+          "move": "Double / Take",
+          "equity": 0.341242,
+          "diff": 0.174789,
+          "analysisLevel": "XGRoller++"
+        },
+        {
+          "move": "Double / Pass",
+          "equity": 1,
+          "diff": -0.483969,
+          "analysisLevel": "XGRoller++"
+        }
+      ],
+      "type": "cube"
+    },
+    "3-5": {
+      "best": "No Double",
+      "equity": 0.482508,
+      "candidates": [
+        {
+          "move": "No Double",
+          "equity": 0.482508,
+          "diff": 0,
+          "analysisLevel": "XGRoller++"
+        },
+        {
+          "move": "Double / Take",
+          "equity": 0.041858,
+          "diff": 0.44065,
+          "analysisLevel": "XGRoller++"
+        },
+        {
+          "move": "Double / Pass",
+          "equity": 1,
+          "diff": -0.517492,
+          "analysisLevel": "XGRoller++"
+        }
+      ],
+      "type": "cube"
+    },
+    "4-pc": {
+      "best": "Double / Pass",
+      "equity": 1,
+      "candidates": [
+        {
+          "move": "No Double",
+          "equity": 0.887423,
+          "diff": 0.112577,
+          "analysisLevel": "3-ply"
+        },
+        {
+          "move": "Double / Take",
+          "equity": 1.778736,
+          "diff": -0.778736,
+          "analysisLevel": "3-ply"
+        },
+        {
+          "move": "Double / Pass",
+          "equity": 1,
+          "diff": 0,
+          "analysisLevel": "3-ply"
+        }
+      ],
+      "type": "cube"
+    },
+    "4-2": {
+      "best": "Double / Pass",
+      "equity": 1,
+      "candidates": [
+        {
+          "move": "No Double",
+          "equity": 0.884392,
+          "diff": 0.115608,
+          "analysisLevel": "3-ply"
+        },
+        {
+          "move": "Double / Take",
+          "equity": 1.712213,
+          "diff": -0.712213,
+          "analysisLevel": "3-ply"
+        },
+        {
+          "move": "Double / Pass",
+          "equity": 1,
+          "diff": 0,
+          "analysisLevel": "3-ply"
+        }
+      ],
+      "type": "cube"
+    },
+    "4-3": {
+      "best": "Double / Pass",
+      "equity": 1,
+      "candidates": [
+        {
+          "move": "No Double",
+          "equity": 0.820907,
+          "diff": 0.179093,
+          "analysisLevel": "XGRoller++"
+        },
+        {
+          "move": "Double / Take",
+          "equity": 1.379785,
+          "diff": -0.379785,
+          "analysisLevel": "XGRoller++"
+        },
+        {
+          "move": "Double / Pass",
+          "equity": 1,
+          "diff": 0,
+          "analysisLevel": "XGRoller++"
+        }
+      ],
+      "type": "cube"
+    },
+    "4-4": {
+      "best": "Double / Pass",
+      "equity": 1,
+      "candidates": [
+        {
+          "move": "No Double",
+          "equity": 0.746527,
+          "diff": 0.253473,
+          "analysisLevel": "XGRoller++"
+        },
+        {
+          "move": "Double / Take",
+          "equity": 1.055443,
+          "diff": -0.055443,
+          "analysisLevel": "XGRoller++"
+        },
+        {
+          "move": "Double / Pass",
+          "equity": 1,
+          "diff": 0,
+          "analysisLevel": "XGRoller++"
+        }
+      ],
+      "type": "cube"
+    },
+    "4-5": {
+      "best": "Double / Take",
+      "equity": 0.583981,
+      "candidates": [
+        {
+          "move": "No Double",
+          "equity": 0.570751,
+          "diff": 0.01323,
+          "analysisLevel": "XGRoller++"
+        },
+        {
+          "move": "Double / Take",
+          "equity": 0.583981,
+          "diff": 0,
+          "analysisLevel": "XGRoller++"
+        },
+        {
+          "move": "Double / Pass",
+          "equity": 1,
+          "diff": -0.416019,
+          "analysisLevel": "XGRoller++"
+        }
+      ],
+      "type": "cube"
+    },
+    "5-pc": {
+      "best": "Double / Pass",
+      "equity": 1,
+      "candidates": [
+        {
+          "move": "No Double",
+          "equity": 0.82145,
+          "diff": 0.17855,
+          "analysisLevel": "3-ply"
+        },
+        {
+          "move": "Double / Take",
+          "equity": 1.101578,
+          "diff": -0.101578,
+          "analysisLevel": "3-ply"
+        },
+        {
+          "move": "Double / Pass",
+          "equity": 1,
+          "diff": 0,
+          "analysisLevel": "3-ply"
+        }
+      ],
+      "type": "cube"
+    },
+    "5-2": {
+      "best": "Double / Pass",
+      "equity": 1,
+      "candidates": [
+        {
+          "move": "No Double",
+          "equity": 0.857889,
+          "diff": 0.142111,
+          "analysisLevel": "3-ply"
+        },
+        {
+          "move": "Double / Take",
+          "equity": 1.293391,
+          "diff": -0.293391,
+          "analysisLevel": "3-ply"
+        },
+        {
+          "move": "Double / Pass",
+          "equity": 1,
+          "diff": 0,
+          "analysisLevel": "3-ply"
+        }
+      ],
+      "type": "cube"
+    },
+    "5-3": {
+      "best": "Double / Pass",
+      "equity": 1,
+      "candidates": [
+        {
+          "move": "No Double",
+          "equity": 0.769678,
+          "diff": 0.230322,
+          "analysisLevel": "XGRoller++"
+        },
+        {
+          "move": "Double / Take",
+          "equity": 1.052986,
+          "diff": -0.052986,
+          "analysisLevel": "XGRoller++"
+        },
+        {
+          "move": "Double / Pass",
+          "equity": 1,
+          "diff": 0,
+          "analysisLevel": "XGRoller++"
+        }
+      ],
+      "type": "cube"
+    },
+    "5-4": {
+      "best": "Double / Take",
+      "equity": 0.877363,
+      "candidates": [
+        {
+          "move": "No Double",
+          "equity": 0.690441,
+          "diff": 0.186922,
+          "analysisLevel": "XGRoller++"
+        },
+        {
+          "move": "Double / Take",
+          "equity": 0.877363,
+          "diff": 0,
+          "analysisLevel": "XGRoller++"
+        },
+        {
+          "move": "Double / Pass",
+          "equity": 1,
+          "diff": -0.122637,
+          "analysisLevel": "XGRoller++"
+        }
+      ],
+      "type": "cube"
+    },
+    "5-5": {
+      "best": "Double / Take",
+      "equity": 0.687621,
+      "candidates": [
+        {
+          "move": "No Double",
+          "equity": 0.628502,
+          "diff": 0.059119,
+          "analysisLevel": "XGRoller++"
+        },
+        {
+          "move": "Double / Take",
+          "equity": 0.687621,
+          "diff": 0,
+          "analysisLevel": "XGRoller++"
+        },
+        {
+          "move": "Double / Pass",
+          "equity": 1,
+          "diff": -0.312379,
+          "analysisLevel": "XGRoller++"
+        }
+      ],
+      "type": "cube"
+    }
+  }
+}
