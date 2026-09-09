@@ -8,7 +8,7 @@ const AXES=[
   {key:"5",label:"5away"}
 ];
 const FALLBACK={
-  id:"001",title:"Sample Position",
+  id:"001",title:"",
   board:{points:[0,-2,0,0,0,0,0,0,3,0,0,0,-5,5,0,0,0,-3,0,-5,0,0,0,0,2,0],dice:[3,1],cubeValue:1,cubeOwner:"center",matchLength:5,blackScore:0,whiteScore:0,crawford:false},
   results:{}
 };
@@ -24,6 +24,13 @@ function renderTable(data){
   let html='<thead><tr><th class="corner">BLACK ↓<br>WHITE →</th>'+AXES.map(a=>`<th>${a.label}</th>`).join('')+'</tr></thead><tbody>';
   for(const r of AXES){html+=`<tr><th>${r.label}</th>`;for(const c of AXES){if(invalid(r.key,c.key)){html+='<td class="score-cell invalid" aria-label="not applicable"></td>';continue}const k=keyFor(r.key,c.key),item=(data.results||{})[k]||{},sp=specialFor(r.key,c.key),best=item.best||"—",bg=item.best?colors.get(item.best):"";html+=`<td class="score-cell ${item.best?'':'empty'}" ${item.best?`data-move="${best.replace(/"/g,'&quot;')}" style="background:${bg}"`:''}>${sp?`<span class="special">${sp}</span>`:''}<span class="move">${best}</span></td>`}html+='</tr>'}
   html+='</tbody>';table.innerHTML=html;
-  legend.innerHTML=moves.length?moves.map(m=>`<span class="legend-item"><span class="legend-swatch" style="background:${colors.get(m)}"></span>${m}</span>`).join(''):'<span class="legend-item">解析結果は未登録です。</span>';
+  legend.innerHTML=moves.length?moves.map(m=>`<span class="legend-item"><span class="legend-swatch" style="background:${colors.get(m)}"></span>${m}</span>`).join(''):'';
 }
-(async()=>{const data=await load();document.getElementById('position-title').textContent=data.title||'Untitled';document.getElementById('board').innerHTML=ScoreMapBoard.render(data.board||{});const b=data.board||{};document.getElementById('position-meta').textContent=`BLACK on roll${Array.isArray(b.dice)&&b.dice.length?` / ${b.dice.join('-')}`:''}`;renderTable(data)})();
+(async()=>{
+  const data=await load();
+  const title=document.getElementById('position-title');
+  const displayText=String(data.title||data.displayText||'').trim();
+  if(displayText){title.textContent=displayText;title.hidden=false}else{title.textContent='';title.hidden=true}
+  document.getElementById('board').innerHTML=ScoreMapBoard.render(data.board||{});
+  renderTable(data);
+})();

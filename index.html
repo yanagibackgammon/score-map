@@ -11,28 +11,28 @@
   <header class="page-header">
     <div class="title-group">
       <h1>SCORE MAP</h1>
-      <span class="creator">YANAGI Backgammon</span>
+      <div class="creator">
+        <span>Created by</span>
+        <a href="https://yanagibackgammon.github.io/" target="_blank" rel="noopener noreferrer">YANAGI Backgammon</a>
+      </div>
     </div>
   </header>
 
   <main>
-    <section class="position-card">
-      <h2 id="position-title">Sample Position</h2>
-      <div id="board" class="board-wrap" aria-label="Backgammon position"></div>
-      <div id="position-meta" class="position-meta"></div>
-    </section>
+    <div id="position-title" class="position-title" hidden></div>
 
-    <section class="map-card">
-      <div class="map-heading">
-        <h3>MATCH SCORE MAP</h3>
-        <div class="axis-note"><strong>BLACK</strong> ↓ &nbsp; / &nbsp; <strong>WHITE</strong> →</div>
-      </div>
-      <div class="table-scroll">
-        <table id="score-table" class="score-table" aria-label="Match score map"></table>
-      </div>
-      <div id="legend" class="legend"></div>
-      <p class="table-note">Post Crawford × Crawford / Crawford × Post Crawford は存在しないため対象外。</p>
-    </section>
+    <div class="content-grid">
+      <section class="position-card">
+        <div id="board" class="board-wrap" aria-label="Backgammon position"></div>
+      </section>
+
+      <section class="map-card">
+        <div class="table-scroll">
+          <table id="score-table" class="score-table" aria-label="Match score map"></table>
+        </div>
+        <div id="legend" class="legend"></div>
+      </section>
+    </div>
   </main>
 
   <script src="board.js"></script>
