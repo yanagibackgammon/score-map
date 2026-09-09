@@ -14,21 +14,25 @@ const FALLBACK={
 };
 const invalid=(r,c)=>(r==="pc"&&c==="c")||(r==="c"&&c==="pc");
 const keyFor=(r,c)=>r==="pc"&&c==="pc"?"unlimited":r==="c"&&c==="c"?"dmp":`${r}-${c}`;
-const specialFor=(r,c)=>r==="pc"&&c==="pc"?"Unlimited":r==="c"&&c==="c"?"DMP":"";
 const palette=["#4f6f52","#665c3a","#4c6174","#6d4f62","#5e5b7a","#704e43","#3f6766","#685a41","#4f536d"];
 async function load(){try{const res=await fetch("data/positions/001.json",{cache:"no-store"});if(!res.ok)throw 0;return await res.json()}catch{return FALLBACK}}
 function renderTable(data){
   const table=document.getElementById("score-table"),legend=document.getElementById("legend");
   const moves=[...new Set(Object.values(data.results||{}).map(v=>v?.best).filter(Boolean))];
   const colors=new Map(moves.map((m,i)=>[m,palette[i%palette.length]]));
-  let html='<colgroup><col class="axis-col">'+AXES.map(()=>'<col class="score-col">').join('')+'</colgroup>';
-  html+='<thead><tr><th class="corner" aria-hidden="true"></th>'+AXES.map(a=>`<th class="white-axis">${a.html||a.label}</th>`).join('')+'</tr></thead><tbody>';
+  let html='<thead><tr><th class="corner" aria-hidden="true"></th>'+AXES.map(a=>`<th class="white-axis">${a.html||a.label}</th>`).join('')+'</tr></thead><tbody>';
   for(const r of AXES){
     html+=`<tr><th class="black-axis">${r.html||r.label}</th>`;
     for(const c of AXES){
-      if(invalid(r.key,c.key)){html+='<td class="score-cell invalid" aria-label="not applicable"></td>';continue}
-      const k=keyFor(r.key,c.key),item=(data.results||{})[k]||{},sp=specialFor(r.key,c.key),best=item.best||"—",bg=item.best?colors.get(item.best):"";
-      html+=`<td class="score-cell ${item.best?'':'empty'}" ${item.best?`data-move="${best.replace(/"/g,'&quot;')}" style="background:${bg}"`:''}>${sp?`<span class="special">${sp}</span>`:''}<span class="move">${best}</span></td>`;
+      if(invalid(r.key,c.key)){
+        let note="";
+        if(r.key==="c"&&c.key==="pc") note='<span class="invalid-label top">↑UNLIMITED</span>';
+        if(r.key==="pc"&&c.key==="c") note='<span class="invalid-label bottom">↓DMP</span>';
+        html+=`<td class="score-cell invalid" aria-label="not applicable">${note}</td>`;
+        continue;
+      }
+      const k=keyFor(r.key,c.key),item=(data.results||{})[k]||{},best=item.best||"—",bg=item.best?colors.get(item.best):"";
+      html+=`<td class="score-cell ${item.best?'':'empty'}" ${item.best?`data-move="${best.replace(/"/g,'&quot;')}" style="background:${bg}"`:''}><span class="move">${best}</span></td>`;
     }
     html+='</tr>';
   }
