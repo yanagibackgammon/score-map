@@ -24,7 +24,7 @@
   <main class="import-main workflow-main">
     <section class="workflow-step">
       <h2 class="step-title">① 解析用XGを作成</h2>
-      <p class="step-description">元ポジションをXG / XGPファイルまたはXGIDで指定し、XG2のBatch Analyze用ファイルを作成します。Match Playの33条件は1本の5-point XG matchにまとめ、UnlimitedだけはXG形式上マッチ長が異なるため別のXGとして同じZIPに入れます。</p>
+      <p class="step-description">元ポジションをXG / XGPファイルまたはXGIDで指定し、34条件それぞれを独立したCube Action用XGとして作成します。</p>
       <div class="io-area">
         <div class="io-heading">入力</div>
         <label class="field-label">元XG / XGP</label>
@@ -42,23 +42,23 @@
       </div>
       <div class="io-area io-output">
         <div class="io-heading">出力</div>
-        <button id="batch-button" class="primary-button" type="button" disabled>解析用XGセットを出力</button>
-        <p class="output-note">ZIPを展開し、XG2の「Analyze → Batch Analyze」で <strong>score-map-match.xg</strong> と <strong>score-map-unlimited.xg</strong> の2ファイルをまとめて選択してください。「Save Games after analyze」を有効にして解析結果を保存します。</p>
+        <button id="batch-button" class="primary-button" type="button" disabled>ダブルアクション解析用XG（34件）を出力</button>
+        <p class="output-note">ZIPを展開し、XG2の「Analyze → Batch Analyze」で34個のXGをすべて選択してください。「Save Games after analyze」を有効にして解析結果を各XGへ保存します。Crawford / DMPはキューブ使用不可のため、XGが解析しない場合でもJSON作成時にNo Doubleとして補完します。</p>
         <p class="import-status" id="batch-status" hidden></p>
       </div>
     </section>
 
     <section class="workflow-step">
       <h2 class="step-title">② 解析済みXGからJSONを作成</h2>
-      <p class="step-description">Batch Analyze後に保存された2つのXGをまとめて選択します。33条件＋Unlimitedの解析結果を読み取り、公開ページ用JSONを作成します。</p>
+      <p class="step-description">Batch Analyze後に保存された34個のXGをまとめて選択します。各ファイルのダブルアクション解析結果を読み取り、公開ページ用JSONを作成します。</p>
       <div class="io-area">
         <div class="io-heading">入力</div>
         <label class="field-label">解析済みXG</label>
         <div id="analyzed-zone" class="drop-zone compact-drop" tabindex="0" role="button">
-          <strong>解析済みXGを2ファイル選択</strong>
+          <strong>解析済みXGを34ファイル選択</strong>
           <input id="analyzed-input" type="file" accept=".xg" multiple hidden>
         </div>
-        <div id="analyzed-info" class="file-info">0 / 2</div>
+        <div id="analyzed-info" class="file-info">0 / 34</div>
         <button id="json-button" class="primary-button" type="button" disabled>JSONを生成</button>
         <p class="import-status" id="json-status" hidden></p>
       </div>
@@ -91,7 +91,7 @@
     </section>
   </main>
 
-  <script src="xg-batch.js?v=17"></script>
-  <script src="import.js?v=17"></script>
+  <script src="xg-batch.js?v=18"></script>
+  <script src="import.js?v=18"></script>
 </body>
 </html>

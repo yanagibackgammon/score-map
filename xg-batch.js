@@ -148,7 +148,7 @@ window.ScoreMapXGBatch = (() => {
         const dmp = black === "C" && white === "C";
         const crawford = !dmp && (black === "C" || white === "C");
         const label = unlimited ? "UNLIMITED" : dmp ? "DMP" : `B-${black}_W-${white}`;
-        const filename = `${String(seq).padStart(2, "0")}_${label}.xgp`;
+        const filename = `${String(seq).padStart(2, "0")}_${label}.xg`;
         out.push({seq, black, white, unlimited, dmp, crawford, label, filename});
         seq++;
       }
@@ -478,7 +478,7 @@ window.ScoreMapXGBatch = (() => {
   }
   function makeSourceCube(template,xgid){
     const out=cloneBytes(template),view=new DataView(out.buffer,out.byteOffset,out.byteLength),dd=64;
-    out[8]=2;view.setInt32(12,1,true);view.setInt32(16,0,true);view.setInt32(20,0,true);view.setInt32(24,0,true);
+    out[8]=2;view.setInt32(12,Number.isFinite(xgid.active)?xgid.active:1,true);view.setInt32(16,0,true);view.setInt32(20,0,true);view.setInt32(24,0,true);
     view.setInt32(32,xgid.cubePos*xgid.cubeExp,true);writePosition(out,36,xgid.points);writePosition(out,dd,xgid.points);
     view.setInt32(dd+32,xgid.playerScore,true);view.setInt32(dd+36,xgid.oppScore,true);
     view.setInt32(dd+40,xgid.cubeExp,true);view.setInt32(dd+44,xgid.cubePos,true);
@@ -489,7 +489,7 @@ window.ScoreMapXGBatch = (() => {
   async function parsedFromXgid(value){
     const xgid=parseXgid(value);
     let response;
-    try{response=await fetch("assets/xgid-template.xgp?v=17",{cache:"no-store"});}catch{throw new Error("XGID用テンプレートを読み込めません。");}
+    try{response=await fetch("assets/xgid-template.xgp?v=18",{cache:"no-store"});}catch{throw new Error("XGID用テンプレートを読み込めません。");}
     if(!response.ok)throw new Error("XGID用テンプレートを読み込めません。");
     const parsed=await parsePackage(await response.arrayBuffer());
     const tempXg=parsed.entries.find(e=>e.name.toLowerCase()==="temp.xg");
@@ -520,7 +520,7 @@ window.ScoreMapXGBatch = (() => {
 
   async function loadFooterTemplates(){
     let response;
-    try{response=await fetch("assets/xg-footer-template.bin?v=17",{cache:"no-store"});}
+    try{response=await fetch("assets/xg-footer-template.bin?v=18",{cache:"no-store"});}
     catch{throw new Error("XG match用テンプレートを読み込めません。");}
     if(!response.ok)throw new Error("XG match用テンプレートを読み込めません。");
     const bytes=new Uint8Array(await response.arrayBuffer());
@@ -579,39 +579,107 @@ window.ScoreMapXGBatch = (() => {
     return concat([prefix,await buildArchive(entries,parsed.arcMeta)]);
   }
 
-  async function buildMatchPlayPackage(parsed,templates){
-    const base=sourceRecords(parsed);
-    const variants=makeVariants().filter(v=>!v.unlimited);
-    if(variants.length!==33)throw new Error("Match Play 33条件の生成に失敗しました。");
-    const records=[];let currentEvent=null;let matchHeader=null;
-    for(let i=0;i<variants.length;i++){
-      const variant=variants[i],patched=patchedRecords(base,variant,parsed.orientation,i+1);
-      if(!matchHeader)matchHeader=patched.matchHeader;
-      records.push(patched.gameHeader,patched.event,makeNeutralGameFooter(templates.gameFooter,variant,parsed.orientation));
-      if(!currentEvent)currentEvent=concat([matchHeader,patched.event]);
-    }
-    const footer=makeNeutralMatchFooter(templates.matchFooter);
-    const stream=concat([matchHeader,...records,footer]);
-    return buildPackageFromStream(parsed,stream,"SCORE MAP / MATCH PLAY 33",currentEvent);
+  let cubeTemplatePromise=null;
+  async function loadCubeRecordTemplate(){
+    if(cubeTemplatePromise)return cubeTemplatePromise;
+    cubeTemplatePromise=(async()=>{
+      let response;
+      try{response=await fetch("assets/xgid-template.xgp?v=18",{cache:"no-store"});}
+      catch{throw new Error("Cube Action用テンプレートを読み込めません。");}
+      if(!response.ok)throw new Error("Cube Action用テンプレートを読み込めません。");
+      const parsed=await parsePackage(await response.arrayBuffer());
+      const main=parsed.entries.find(e=>e.name.toLowerCase()==="temp.xg");
+      const rec=main?firstRecord(main.bytes,2):null;
+      if(!rec)throw new Error("Cube Action用テンプレートが不正です。");
+      return rec;
+    })();
+    return cubeTemplatePromise;
   }
 
-  async function buildUnlimitedPackage(parsed,templates){
+  function sourceCubeState(base){
+    const event=base.event,view=new DataView(event.buffer,event.byteOffset,event.byteLength);
+    if(base.eventType===2){
+      const cubeB=view.getInt32(32,true);
+      return {
+        points:readPosition(event,36),
+        cubeExp:Math.abs(cubeB),
+        cubePos:cubeB===0?0:(cubeB>0?1:-1),
+        active:view.getInt32(12,true)||1
+      };
+    }
+    if(base.eventType===3){
+      const cubeA=view.getInt32(108,true);
+      return {
+        points:readPosition(event,9),
+        cubeExp:Math.abs(cubeA),
+        cubePos:cubeA===0?0:(cubeA>0?1:-1),
+        active:view.getInt32(64,true)||1
+      };
+    }
+    throw new Error("元ポジションからCube Actionを作成できません。");
+  }
+
+  async function cubeBaseRecords(parsed){
     const base=sourceRecords(parsed);
-    const variant=makeVariants().find(v=>v.unlimited);
+    if(base.eventType===2){
+      const event=cloneBytes(base.event);
+      const view=new DataView(event.buffer,event.byteOffset,event.byteLength);
+      invalidateCube(event,view);
+      return {...base,event,eventType:2};
+    }
+    const state=sourceCubeState(base);
+    const template=await loadCubeRecordTemplate();
+    const mhv=new DataView(base.matchHeader.buffer,base.matchHeader.byteOffset,base.matchHeader.byteLength);
+    const ghv=new DataView(base.gameHeader.buffer,base.gameHeader.byteOffset,base.gameHeader.byteLength);
+    const event=makeSourceCube(template,{
+      ...state,
+      playerScore:ghv.getInt32(12,true),
+      oppScore:ghv.getInt32(16,true),
+      matchLength:mhv.getInt32(92,true),
+      rules:ghv.getUint8(20)?1:0
+    });
+    return {...base,event,eventType:2};
+  }
+
+  async function buildSingleCubePackage(parsed,templates,base,variant){
     const patched=patchedRecords(base,variant,parsed.orientation,1);
-    const stream=concat([patched.matchHeader,patched.gameHeader,patched.event,makeNeutralGameFooter(templates.gameFooter,variant,parsed.orientation),makeNeutralMatchFooter(templates.matchFooter)]);
-    return buildPackageFromStream(parsed,stream,"SCORE MAP / UNLIMITED",concat([patched.matchHeader,patched.event]));
+    if(patched.event[8]!==2)throw new Error(`${variant.label}: Cube Actionレコードの生成に失敗しました。`);
+    const stream=concat([
+      patched.matchHeader,
+      patched.gameHeader,
+      patched.event,
+      makeNeutralGameFooter(templates.gameFooter,variant,parsed.orientation),
+      makeNeutralMatchFooter(templates.matchFooter)
+    ]);
+    return buildPackageFromStream(parsed,stream,`SCORE MAP / ${variant.label}`,concat([patched.matchHeader,patched.event]));
+  }
+
+  async function validateCubePackage(bytes,expectedVariant){
+    const parsed=await parsePackage(bytes);
+    const main=parsed.entries.find(e=>e.name.toLowerCase()==="temp.xg");
+    if(!main||main.bytes.length%SAVE_REC_SIZE!==0)throw new Error(`${expectedVariant.label}: XG本体を検証できません。`);
+    let cubeCount=0,moveCount=0;
+    for(let off=0;off<main.bytes.length;off+=SAVE_REC_SIZE){
+      if(main.bytes[off+8]===2)cubeCount++;
+      if(main.bytes[off+8]===3)moveCount++;
+    }
+    if(cubeCount!==1||moveCount!==0)throw new Error(`${expectedVariant.label}: ダブルアクション用XGとして生成できませんでした。`);
+    const actual=identifyVariantFromStream(main.bytes);
+    if(variantKey(actual)!==variantKey(expectedVariant))throw new Error(`${expectedVariant.label}: スコア条件の検証に失敗しました。`);
   }
 
   async function generateBatch(input, options = {}) {
     const parsed = typeof input === "string" ? await parsedFromXgid(input) : await parsePackage(input);
     const templates=await loadFooterTemplates();
-    const matchBytes=await buildMatchPlayPackage(parsed,templates);
-    const unlimitedBytes=await buildUnlimitedPackage(parsed,templates);
-    const files=[
-      {name:"score-map-match.xg",bytes:matchBytes},
-      {name:"score-map-unlimited.xg",bytes:unlimitedBytes}
-    ];
+    const base=await cubeBaseRecords(parsed);
+    const variants=makeVariants();
+    const files=[];
+    for(const variant of variants){
+      const bytes=await buildSingleCubePackage(parsed,templates,base,variant);
+      await validateCubePackage(bytes,variant);
+      files.push({name:variant.filename,bytes});
+    }
+    if(files.length!==34)throw new Error(`解析用XGの生成数が34ではありません: ${files.length}`);
     return {zip:buildZip(files),files};
   }
 
@@ -755,43 +823,98 @@ window.ScoreMapXGBatch = (() => {
     return {cubeValue:Math.pow(2,Math.abs(n)),cubeOwner:n>0?"black":"white"};
   }
 
-  async function parseAnalyzedPackageMany(input){
+  function identifyVariantFromStream(bytes){
+    if(bytes.length%SAVE_REC_SIZE!==0)throw new Error("XG本体のレコード形式を読み取れません。");
+    let matchLength=5,orientation=1,current=null;
+    for(let off=0;off<bytes.length;off+=SAVE_REC_SIZE){
+      const rec=bytes.subarray(off,off+SAVE_REC_SIZE),type=rec[8],view=new DataView(rec.buffer,rec.byteOffset,rec.byteLength);
+      if(type===0){matchLength=view.getInt32(92,true);orientation=view.getInt32(548,true)<0?-1:1;}
+      else if(type===1&&!current){current={score1:view.getInt32(12,true),score2:view.getInt32(16,true),crawford:!!view.getUint8(20)};}
+      if(current)break;
+    }
+    if(!current)throw new Error("XGのゲーム情報を読み取れません。");
+    const variant=variantFromGame(matchLength,current.score1,current.score2,current.crawford,orientation);
+    if(!variant)throw new Error("XGのスコア条件を特定できません。");
+    return variant;
+  }
+
+  async function parseAnalyzedPackageSingle(input){
     const parsed=await parsePackage(input);
     const main=parsed.entries.find(e=>e.name.toLowerCase()==="temp.xg");
     if(!main)throw new Error("XG内にtemp.xgがありません。");
-    return {parsed,analyses:parseAnalyzedStreamMany(main.bytes)};
+    const variant=identifyVariantFromStream(main.bytes);
+    let analyses=[];
+    try{analyses=parseAnalyzedStreamMany(main.bytes);}catch(error){
+      if(!/解析結果が見つかりません/.test(String(error?.message||"")))throw error;
+    }
+    const matching=analyses.find(a=>variantKey(a.variant)===variantKey(variant))||analyses[0]||null;
+    return {parsed,variant,analysis:matching};
+  }
+
+  function cubeUnavailableResult(variant,boardSource){
+    return {
+      variant,
+      type:"cube",
+      best:"No Double",
+      equity:null,
+      candidates:[],
+      position:boardSource?.position||null,
+      dice:[],
+      cubeA:0,
+      synthetic:true
+    };
   }
 
   async function buildScoreMapJson(inputs,options={}){
-    if(!Array.isArray(inputs)||inputs.length!==2)throw new Error("解析済みXGを2ファイル選択してください。");
+    if(!Array.isArray(inputs)||inputs.length!==34)throw new Error("解析済みXGを34ファイル選択してください。");
     const found=new Map();let boardSource=null;
+    const pendingUnavailable=[];
     for(const item of inputs){
       let parsed;
-      try{parsed=await parseAnalyzedPackageMany(item.buffer)}catch(error){throw new Error(`${item.name}: ${error.message}`)}
-      for(const analysis of parsed.analyses){
-        const key=variantKey(analysis.variant);
-        if(found.has(key))throw new Error(`同じ条件の解析結果が重複しています: ${key}`);
-        found.set(key,analysis);
-        if(analysis.variant.black==="5a"&&analysis.variant.white==="5a")boardSource=analysis;
+      try{parsed=await parseAnalyzedPackageSingle(item.buffer)}catch(error){throw new Error(`${item.name}: ${error.message}`)}
+      const key=variantKey(parsed.variant);
+      if(found.has(key)||pendingUnavailable.some(x=>variantKey(x.variant)===key))throw new Error(`同じ条件のXGが重複しています: ${key}`);
+      if(parsed.analysis){
+        if(parsed.analysis.type!=="cube")throw new Error(`${item.name}: ダブルアクションとして解析されていません。`);
+        found.set(key,parsed.analysis);
+        if(parsed.variant.black==="5a"&&parsed.variant.white==="5a")boardSource=parsed.analysis;
+      }else if(parsed.variant.crawford||parsed.variant.dmp){
+        pendingUnavailable.push(parsed);
+      }else{
+        throw new Error(`${item.name}: ダブルアクションの解析結果がありません。XG2のBatch Analyzeで「Save Games after analyze」を有効にして再解析してください。`);
       }
+    }
+    if(!boardSource){
+      const live=[...found.values()][0];
+      if(live)boardSource=live;
+    }
+    for(const item of pendingUnavailable){
+      const key=variantKey(item.variant);
+      found.set(key,cubeUnavailableResult(item.variant,boardSource));
     }
     const expected=makeVariants().map(variantKey),missing=expected.filter(k=>!found.has(k));
     if(missing.length)throw new Error(`不足している条件があります: ${missing.join(', ')}`);
     if(found.size!==34)throw new Error(`解析結果数が34ではありません: ${found.size}`);
     boardSource=boardSource||found.values().next().value;
+    if(!boardSource?.position)throw new Error("公開用盤面を解析結果から取得できません。");
     const cube=cubeDisplay(boardSource.cubeA);
     const results={};
-    for(const key of expected){const a=found.get(key);results[key]={best:a.best,equity:a.equity,candidates:a.candidates,type:a.type}}
+    for(const key of expected){
+      const a=found.get(key);
+      results[key]={best:a.best,equity:a.equity,candidates:a.candidates,type:"cube"};
+      if(a.synthetic)results[key].cubeUnavailable=true;
+    }
     return {
       schemaVersion:1,
       id:"001",
       title:String(options.title||"").trim(),
       generatedAt:new Date().toISOString(),
       source:"eXtreme Gammon 2",
-      board:{points:boardSource.position,dice:boardSource.dice,cubeValue:cube.cubeValue,cubeOwner:cube.cubeOwner,matchLength:5,blackScore:0,whiteScore:0,crawford:false},
+      board:{points:boardSource.position,dice:[],cubeValue:cube.cubeValue,cubeOwner:cube.cubeOwner,matchLength:5,blackScore:0,whiteScore:0,crawford:false},
       results
     };
   }
+
 
   return {generateBatch, makeVariants, buildScoreMapJson, parseXgid};
 })();

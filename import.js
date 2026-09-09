@@ -29,10 +29,15 @@ function showStatus(el,message,isError=false){
   el.hidden=false;el.textContent=message;el.classList.toggle('is-error',!!isError);
 }
 function clearStatus(el){el.hidden=true;el.textContent='';el.classList.remove('is-error')}
-function isXgFile(file){return /\.(xg|xgp)$/i.test(file?.name||'')}
+function isSourceFile(file){return /\.(xg|xgp)$/i.test(file?.name||'')}
+function isAnalyzedXgFile(file){return /\.xg$/i.test(file?.name||'')}
 function downloadBlob(content,name,type='application/octet-stream'){
   const url=URL.createObjectURL(new Blob([content],{type}));
   const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+function timestampForFilename(date=new Date()){
+  const p=n=>String(n).padStart(2,'0');
+  return `${date.getFullYear()}${p(date.getMonth()+1)}${p(date.getDate())}_${p(date.getHours())}${p(date.getMinutes())}${p(date.getSeconds())}`;
 }
 function wireDrop(zone,input,onFiles){
   zone.addEventListener('click',()=>input.click());
@@ -58,7 +63,7 @@ function refreshFinalState(){
 
 wireDrop(sourceZone,sourceInput,files=>{
   const file=files[0];
-  if(!isXgFile(file)){
+  if(!isSourceFile(file)){
     sourceFile=null;sourceInfo.textContent='未選択';showStatus(batchStatus,'XG / XGPを1ファイル選択してください。',true);refreshBatchState();return;
   }
   sourceFile=file;
@@ -71,7 +76,7 @@ xgidInput.addEventListener('input',()=>{
   const value=xgidInput.value.trim();
   if(value){
     sourceFile=null;sourceInput.value='';sourceInfo.textContent='未選択';
-    try{const x=ScoreMapXGBatch.parseXgid(value);xgidInfo.textContent=`XGID確認済み / ${x.diceText==='00'?'キューブ判断':`出目 ${x.diceText}`}`;clearStatus(batchStatus)}
+    try{const x=ScoreMapXGBatch.parseXgid(value);xgidInfo.textContent=`XGID確認済み / ${x.diceText==='00'?'キューブ判断':`出目 ${x.diceText}（ダブル解析用XGでは出目を使用しません）`}`;clearStatus(batchStatus)}
     catch(error){xgidInfo.textContent='形式を確認してください';}
   }else{xgidInfo.textContent='未入力'}
   refreshBatchState();
@@ -83,25 +88,25 @@ batchButton.addEventListener('click',async()=>{
   try{
     const source=sourceFile ? await sourceFile.arrayBuffer() : xgidInput.value.trim();
     const result=await ScoreMapXGBatch.generateBatch(source);
-    downloadBlob(result.zip,'score-map-analysis-set.zip','application/zip');
-    showStatus(batchStatus,'解析用XGセットを出力しました。XG2のBatch Analyzeで2ファイルをまとめて解析してください。');
+    downloadBlob(result.zip,`score-map_${timestampForFilename()}.zip`,'application/zip');
+    showStatus(batchStatus,'Cube Action用XGを34ファイル出力しました。ZIPを展開し、XG2のBatch Analyzeで34ファイルをまとめて選択してください。');
   }catch(error){console.error(error);showStatus(batchStatus,error?.message||'生成に失敗しました。',true)}
   finally{refreshBatchState()}
 });
 
 wireDrop(analyzedZone,analyzedInput,files=>{
-  analyzedFiles=files.filter(isXgFile);
-  analyzedInfo.textContent=`${analyzedFiles.length} / 2`;
-  const ok=analyzedFiles.length===2;
+  analyzedFiles=files.filter(isAnalyzedXgFile);
+  analyzedInfo.textContent=`${analyzedFiles.length} / 34`;
+  const ok=analyzedFiles.length===34;
   jsonButton.disabled=!ok;
   generatedData=null;jsonPreview.value='';downloadJsonButton.disabled=true;publishButton.disabled=true;publicLink.hidden=true;
   clearStatus(jsonStatus);clearStatus(publishStatus);
-  if(files.length && !ok)showStatus(jsonStatus,'解析済みXGを2ファイルまとめて選択してください。',true);
+  if(files.length && !ok)showStatus(jsonStatus,'解析済みXGを34ファイルまとめて選択してください。',true);
 });
 
 jsonButton.addEventListener('click',async()=>{
-  if(analyzedFiles.length!==2)return;
-  jsonButton.disabled=true;showStatus(jsonStatus,'2ファイルから34条件の解析結果を読み取っています…');
+  if(analyzedFiles.length!==34)return;
+  jsonButton.disabled=true;showStatus(jsonStatus,'34ファイルからダブルアクション解析結果を読み取っています…');
   try{
     const inputs=[];
     for(const file of analyzedFiles)inputs.push({name:file.name,buffer:await file.arrayBuffer()});
@@ -110,7 +115,7 @@ jsonButton.addEventListener('click',async()=>{
     refreshFinalState();
     showStatus(jsonStatus,'34 / 34 の解析結果からJSONを生成しました。③でタイトルを設定してください。');
   }catch(error){console.error(error);generatedData=null;jsonPreview.value='';downloadJsonButton.disabled=true;publishButton.disabled=true;showStatus(jsonStatus,error?.message||'JSON生成に失敗しました。',true)}
-  finally{jsonButton.disabled=analyzedFiles.length!==2}
+  finally{jsonButton.disabled=analyzedFiles.length!==34}
 });
 
 titleInput.addEventListener('input',refreshFinalState);
