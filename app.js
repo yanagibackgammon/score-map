@@ -21,8 +21,17 @@ function renderTable(data){
   const table=document.getElementById("score-table"),legend=document.getElementById("legend");
   const moves=[...new Set(Object.values(data.results||{}).map(v=>v?.best).filter(Boolean))];
   const colors=new Map(moves.map((m,i)=>[m,palette[i%palette.length]]));
-  let html='<thead><tr><th class="corner">BLACK ↓<br>WHITE →</th>'+AXES.map(a=>`<th>${a.label}</th>`).join('')+'</tr></thead><tbody>';
-  for(const r of AXES){html+=`<tr><th>${r.label}</th>`;for(const c of AXES){if(invalid(r.key,c.key)){html+='<td class="score-cell invalid" aria-label="not applicable"></td>';continue}const k=keyFor(r.key,c.key),item=(data.results||{})[k]||{},sp=specialFor(r.key,c.key),best=item.best||"—",bg=item.best?colors.get(item.best):"";html+=`<td class="score-cell ${item.best?'':'empty'}" ${item.best?`data-move="${best.replace(/"/g,'&quot;')}" style="background:${bg}"`:''}>${sp?`<span class="special">${sp}</span>`:''}<span class="move">${best}</span></td>`}html+='</tr>'}
+  let html='<colgroup><col class="axis-col">'+AXES.map(()=>'<col class="score-col">').join('')+'</colgroup>';
+  html+='<thead><tr><th class="corner" aria-hidden="true"></th>'+AXES.map(a=>`<th class="white-axis">${a.label}</th>`).join('')+'</tr></thead><tbody>';
+  for(const r of AXES){
+    html+=`<tr><th class="black-axis">${r.label}</th>`;
+    for(const c of AXES){
+      if(invalid(r.key,c.key)){html+='<td class="score-cell invalid" aria-label="not applicable"></td>';continue}
+      const k=keyFor(r.key,c.key),item=(data.results||{})[k]||{},sp=specialFor(r.key,c.key),best=item.best||"—",bg=item.best?colors.get(item.best):"";
+      html+=`<td class="score-cell ${item.best?'':'empty'}" ${item.best?`data-move="${best.replace(/"/g,'&quot;')}" style="background:${bg}"`:''}>${sp?`<span class="special">${sp}</span>`:''}<span class="move">${best}</span></td>`;
+    }
+    html+='</tr>';
+  }
   html+='</tbody>';table.innerHTML=html;
   legend.innerHTML=moves.length?moves.map(m=>`<span class="legend-item"><span class="legend-swatch" style="background:${colors.get(m)}"></span>${m}</span>`).join(''):'';
 }
