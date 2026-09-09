@@ -78,14 +78,18 @@ function renderXgidTable(plan){
   xgidTable.innerHTML=html;
   xgidTable.querySelectorAll('.xgid-copy').forEach(button=>{
     button.addEventListener('click',async()=>{
+      const markCopied=()=>{
+        button.classList.add('copied');
+        button.closest('.xgid-cell')?.classList.add('is-copied');
+        button.setAttribute('title','コピー済み');
+        button.setAttribute('aria-label',button.getAttribute('aria-label').replace('をコピー','（コピー済み）'));
+      };
       try{
         await navigator.clipboard.writeText(button.dataset.xgid);
-        button.classList.add('copied');
-        button.setAttribute('title','コピーしました');
-        setTimeout(()=>{button.classList.remove('copied');button.setAttribute('title','XGIDをコピー')},900);
+        markCopied();
       }catch{
         const ta=document.createElement('textarea');ta.value=button.dataset.xgid;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();
-        button.classList.add('copied');setTimeout(()=>button.classList.remove('copied'),900);
+        markCopied();
       }
     });
   });

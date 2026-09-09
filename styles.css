@@ -157,7 +157,9 @@ main{width:min(1580px,calc(100% - 32px));margin:0 auto;padding:18px 0 48px}
 .xgid-copy:hover{background:#f6f0e5}
 .xgid-copy:focus-visible{outline:2px solid var(--theme);outline-offset:-3px}
 .xgid-copy svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-.xgid-copy.copied{background:#efe5d2;color:#3f602f}
+.xgid-cell.is-copied{background:var(--theme)}
+.xgid-cell.is-copied .xgid-copy,.xgid-copy.copied{background:var(--theme);color:#111}
+.xgid-cell.is-copied .xgid-copy:hover{background:var(--theme)}
 .xgid-map-summary{margin-top:9px;color:#50575c;font-size:11px;line-height:1.5;text-align:right}
 @media(max-width:720px){
   .xgid-score-table th,.xgid-score-table td{height:38px}
