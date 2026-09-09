@@ -2,9 +2,10 @@
 const sourceZone=document.getElementById('drop-zone');
 const sourceInput=document.getElementById('file-input');
 const sourceInfo=document.getElementById('file-info');
+const xgidInput=document.getElementById('xgid-input');
+const xgidInfo=document.getElementById('xgid-info');
 const batchButton=document.getElementById('batch-button');
 const batchStatus=document.getElementById('batch-status');
-const titleInput=document.getElementById('title-input');
 
 const analyzedZone=document.getElementById('analyzed-zone');
 const analyzedInput=document.getElementById('analyzed-input');
@@ -12,8 +13,9 @@ const analyzedInfo=document.getElementById('analyzed-info');
 const jsonButton=document.getElementById('json-button');
 const jsonStatus=document.getElementById('json-status');
 const jsonPreview=document.getElementById('json-preview');
-const downloadJsonButton=document.getElementById('download-json-button');
 
+const titleInput=document.getElementById('title-input');
+const downloadJsonButton=document.getElementById('download-json-button');
 const tokenInput=document.getElementById('github-token');
 const publishButton=document.getElementById('publish-button');
 const publishStatus=document.getElementById('publish-status');
@@ -21,7 +23,7 @@ const publicLink=document.getElementById('public-link');
 
 let sourceFile=null;
 let analyzedFiles=[];
-let generatedJson='';
+let generatedData=null;
 
 function showStatus(el,message,isError=false){
   el.hidden=false;el.textContent=message;el.classList.toggle('is-error',!!isError);
@@ -40,24 +42,51 @@ function wireDrop(zone,input,onFiles){
   ['dragleave','drop'].forEach(t=>zone.addEventListener(t,e=>{e.preventDefault();zone.classList.remove('is-dragging')}));
   zone.addEventListener('drop',e=>onFiles([...e.dataTransfer.files]));
 }
+function sourceReady(){if(sourceFile)return true;const value=xgidInput.value.trim();if(!value)return false;try{ScoreMapXGBatch.parseXgid(value);return true}catch{return false}}
+function refreshBatchState(){batchButton.disabled=!sourceReady()}
+function finalJsonText(){
+  if(!generatedData)return '';
+  const data=structuredClone(generatedData);
+  data.title=titleInput.value.trim();
+  return JSON.stringify(data,null,2)+'\n';
+}
+function refreshFinalState(){
+  if(generatedData)jsonPreview.value=finalJsonText();
+  downloadJsonButton.disabled=!generatedData;
+  publishButton.disabled=!(generatedData&&tokenInput.value.trim());
+}
 
 wireDrop(sourceZone,sourceInput,files=>{
   const file=files[0];
   if(!isXgFile(file)){
-    sourceFile=null;sourceInfo.textContent='未選択';batchButton.disabled=true;showStatus(batchStatus,'XG / XGPを1ファイル選択してください。',true);return;
+    sourceFile=null;sourceInfo.textContent='未選択';showStatus(batchStatus,'XG / XGPを1ファイル選択してください。',true);refreshBatchState();return;
   }
-  sourceFile=file;sourceInfo.textContent=`${file.name} / ${(file.size/1024).toFixed(1)} KB`;batchButton.disabled=false;clearStatus(batchStatus);
+  sourceFile=file;
+  sourceInfo.textContent=`${file.name} / ${(file.size/1024).toFixed(1)} KB`;
+  xgidInput.value='';xgidInfo.textContent='未入力';
+  clearStatus(batchStatus);refreshBatchState();
+});
+
+xgidInput.addEventListener('input',()=>{
+  const value=xgidInput.value.trim();
+  if(value){
+    sourceFile=null;sourceInput.value='';sourceInfo.textContent='未選択';
+    try{const x=ScoreMapXGBatch.parseXgid(value);xgidInfo.textContent=`XGID確認済み / ${x.diceText==='00'?'キューブ判断':`出目 ${x.diceText}`}`;clearStatus(batchStatus)}
+    catch(error){xgidInfo.textContent='形式を確認してください';}
+  }else{xgidInfo.textContent='未入力'}
+  refreshBatchState();
 });
 
 batchButton.addEventListener('click',async()=>{
-  if(!sourceFile)return;
+  if(!sourceReady())return;
   batchButton.disabled=true;showStatus(batchStatus,'34条件を生成しています…');
   try{
-    const result=await ScoreMapXGBatch.generateBatch(await sourceFile.arrayBuffer(),{title:titleInput.value});
+    const source=sourceFile ? await sourceFile.arrayBuffer() : xgidInput.value.trim();
+    const result=await ScoreMapXGBatch.generateBatch(source);
     downloadBlob(result.zip,'score-map-34-xgp.zip','application/zip');
     showStatus(batchStatus,'34個の解析用XGPをZIPで出力しました。');
   }catch(error){console.error(error);showStatus(batchStatus,error?.message||'生成に失敗しました。',true)}
-  finally{batchButton.disabled=false}
+  finally{refreshBatchState()}
 });
 
 wireDrop(analyzedZone,analyzedInput,files=>{
@@ -65,7 +94,7 @@ wireDrop(analyzedZone,analyzedInput,files=>{
   analyzedInfo.textContent=`${analyzedFiles.length} / 34`;
   const ok=analyzedFiles.length===34;
   jsonButton.disabled=!ok;
-  generatedJson='';jsonPreview.value='';downloadJsonButton.disabled=true;publishButton.disabled=true;publicLink.hidden=true;
+  generatedData=null;jsonPreview.value='';downloadJsonButton.disabled=true;publishButton.disabled=true;publicLink.hidden=true;
   clearStatus(jsonStatus);clearStatus(publishStatus);
   if(files.length && !ok)showStatus(jsonStatus,'解析済みXGPを34個まとめて選択してください。',true);
 });
@@ -76,19 +105,17 @@ jsonButton.addEventListener('click',async()=>{
   try{
     const inputs=[];
     for(const file of analyzedFiles)inputs.push({name:file.name,buffer:await file.arrayBuffer()});
-    const data=await ScoreMapXGBatch.buildScoreMapJson(inputs,{title:titleInput.value});
-    generatedJson=JSON.stringify(data,null,2)+'\n';
-    jsonPreview.value=generatedJson;
-    if(!titleInput.value.trim() && data.title)titleInput.value=data.title;
-    downloadJsonButton.disabled=false;
-    publishButton.disabled=!tokenInput.value.trim();
-    showStatus(jsonStatus,'34 / 34 の解析結果からJSONを生成しました。');
-  }catch(error){console.error(error);generatedJson='';jsonPreview.value='';downloadJsonButton.disabled=true;publishButton.disabled=true;showStatus(jsonStatus,error?.message||'JSON生成に失敗しました。',true)}
-  finally{jsonButton.disabled=analyzedFiles.length!==34?true:false}
+    generatedData=await ScoreMapXGBatch.buildScoreMapJson(inputs,{title:''});
+    generatedData.title='';
+    refreshFinalState();
+    showStatus(jsonStatus,'34 / 34 の解析結果からJSONを生成しました。④でタイトルを設定してください。');
+  }catch(error){console.error(error);generatedData=null;jsonPreview.value='';downloadJsonButton.disabled=true;publishButton.disabled=true;showStatus(jsonStatus,error?.message||'JSON生成に失敗しました。',true)}
+  finally{jsonButton.disabled=analyzedFiles.length!==34}
 });
 
-downloadJsonButton.addEventListener('click',()=>{if(generatedJson)downloadBlob(generatedJson,'001.json','application/json;charset=utf-8')});
-tokenInput.addEventListener('input',()=>{publishButton.disabled=!(generatedJson&&tokenInput.value.trim())});
+titleInput.addEventListener('input',refreshFinalState);
+downloadJsonButton.addEventListener('click',()=>{const text=finalJsonText();if(text)downloadBlob(text,'001.json','application/json;charset=utf-8')});
+tokenInput.addEventListener('input',refreshFinalState);
 
 function base64Utf8(text){
   const bytes=new TextEncoder().encode(text);let bin='';const chunk=0x8000;
@@ -112,6 +139,7 @@ async function githubRequest(url,options={}){
 }
 
 publishButton.addEventListener('click',async()=>{
+  const generatedJson=finalJsonText();
   if(!generatedJson||!tokenInput.value.trim())return;
   publishButton.disabled=true;publicLink.hidden=true;showStatus(publishStatus,'GitHubへ反映しています…');
   const api='https://api.github.com/repos/yanagibackgammon/score-map/contents/data/positions/001.json';
@@ -124,5 +152,5 @@ publishButton.addEventListener('click',async()=>{
     showStatus(publishStatus,'GitHubへ反映しました。PagesはActionsで自動更新されます。');
     publicLink.hidden=false;
   }catch(error){console.error(error);showStatus(publishStatus,error?.message||'GitHubへの反映に失敗しました。',true)}
-  finally{publishButton.disabled=!(generatedJson&&tokenInput.value.trim())}
+  finally{refreshFinalState()}
 });

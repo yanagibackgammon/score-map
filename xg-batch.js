@@ -359,8 +359,159 @@ window.ScoreMapXGBatch = (() => {
     return concat([...locals, centralData, end]);
   }
 
+
+
+  function parseXgid(value) {
+    const raw = String(value || "").trim().replace(/^XGID\s*=\s*/i, "");
+    const parts = raw.split(":");
+    if (parts.length !== 10) throw new Error("XGIDの形式が正しくありません。");
+    const [positionText,cubeText,cubePosText,turnText,diceText,playerScoreText,oppScoreText,rulesText,matchLengthText,maxCubeText] = parts;
+    if (!/^[\-A-Oa-o]{26}$/.test(positionText)) throw new Error("XGIDのポジション部分を読み取れません。");
+    const bottomPoints = Array.from(positionText, ch => {
+      if (ch === "-") return 0;
+      if (ch >= "A" && ch <= "O") return ch.charCodeAt(0) - 64;
+      return -(ch.charCodeAt(0) - 96);
+    });
+    const cubeExp = Number(cubeText), cubePosBottom = Number(cubePosText), turn = Number(turnText);
+    const scoreBottom = Number(playerScoreText), scoreTop = Number(oppScoreText), rules = Number(rulesText), matchLength = Number(matchLengthText), maxCube = Number(maxCubeText);
+    if (![cubeExp,cubePosBottom,turn,scoreBottom,scoreTop,rules,matchLength,maxCube].every(Number.isFinite)) throw new Error("XGIDの数値項目を読み取れません。");
+    if (![ -1, 0, 1 ].includes(cubePosBottom) || ![-1,1].includes(turn)) throw new Error("XGIDのキューブまたは手番情報が不正です。");
+    if (!/^([0-6][0-6])$/.test(diceText)) throw new Error("XGIDの出目を読み取れません。現在は00または通常の出目に対応しています。");
+    const dice = [Number(diceText[0]), Number(diceText[1])];
+    if ((dice[0]===0)!==(dice[1]===0)) throw new Error("XGIDの出目は00または1〜6の組合せにしてください。");
+    const points = turn===1 ? bottomPoints : bottomPoints.slice().reverse().map(v=>-v);
+    const cubePos = cubePosBottom * turn;
+    const playerScore = turn===1 ? scoreBottom : scoreTop;
+    const oppScore = turn===1 ? scoreTop : scoreBottom;
+    return {raw:`XGID=${raw}`,points,cubeExp,cubePos,turn,dice,diceText,playerScore,oppScore,rules,matchLength,maxCube};
+  }
+
+  function writePosition(bytes, offset, points) {
+    for (let i=0;i<26;i++) bytes[offset+i] = points[i] & 0xff;
+  }
+
+  function cloneBoard(board){ return board.slice(); }
+  function canBearOff(board){
+    if (board[25] > 0) return false;
+    for (let i=7;i<=24;i++) if (board[i] > 0) return false;
+    return true;
+  }
+  function singleDieMoves(board, die){
+    const moves=[];
+    const sources=[];
+    if (board[25] > 0) sources.push(24);
+    else for (let from=23;from>=0;from--) if (board[from+1] > 0) sources.push(from);
+    for (const from of sources){
+      const dest=from-die;
+      if (dest>=0){
+        if (board[dest+1] <= -2) continue;
+      } else {
+        if (!canBearOff(board)) continue;
+        const exact=(from+1===die);
+        let oversize=false;
+        if (die>from+1){
+          oversize=true;
+          for (let p=from+1;p<=5;p++) if (board[p+1] > 0){oversize=false;break;}
+        }
+        if (!exact && !oversize) continue;
+      }
+      const next=cloneBoard(board);
+      const srcIndex=from===24?25:from+1;
+      next[srcIndex]-=1;
+      if (dest>=0){
+        const dst=dest+1;
+        if (next[dst]===-1){next[dst]=1;next[0]-=1;} else next[dst]+=1;
+      }
+      moves.push({from,to:dest,die,board:next});
+    }
+    return moves;
+  }
+  function legalSequence(points,dice){
+    if (!dice[0] || !dice[1]) return {moves:[],board:points.slice()};
+    const orders=dice[0]===dice[1] ? [[dice[0],dice[0],dice[0],dice[0]]] : [[dice[0],dice[1]],[dice[1],dice[0]]];
+    const candidates=[];
+    function walk(board,order,index,moves){
+      if(index>=order.length){candidates.push({moves:moves.slice(),board:board.slice()});return;}
+      const options=singleDieMoves(board,order[index]);
+      if(!options.length){walk(board,order,index+1,moves);return;}
+      for(const option of options){moves.push({from:option.from,to:option.to,die:option.die});walk(option.board,order,index+1,moves);moves.pop();}
+    }
+    for(const order of orders)walk(points.slice(),order,0,[]);
+    if(!candidates.length)return {moves:[],board:points.slice()};
+    let max=Math.max(...candidates.map(c=>c.moves.length));
+    let best=candidates.filter(c=>c.moves.length===max);
+    if(max===1 && dice[0]!==dice[1]){
+      const hi=Math.max(...dice);const high=best.filter(c=>c.moves[0]?.die===hi);if(high.length)best=high;
+    }
+    return best[0];
+  }
+
+  function patchSourceMatchHeader(rec,xgid){
+    const out=cloneBytes(rec),view=new DataView(out.buffer,out.byteOffset,out.byteLength);
+    view.setInt32(92,xgid.matchLength||5,true);
+    view.setUint8(100,1);
+    if(Number.isFinite(xgid.maxCube))view.setInt32(612,xgid.maxCube,true);
+    return out;
+  }
+  function patchSourceGameHeader(rec,xgid){
+    const out=cloneBytes(rec),view=new DataView(out.buffer,out.byteOffset,out.byteLength);
+    view.setInt32(12,xgid.playerScore,true);view.setInt32(16,xgid.oppScore,true);
+    view.setUint8(20,(xgid.matchLength>0&&xgid.rules===1)?1:0);
+    writePosition(out,21,xgid.points);view.setUint8(52,1);
+    return out;
+  }
+  function makeSourceMove(template,xgid){
+    const out=cloneBytes(template),view=new DataView(out.buffer,out.byteOffset,out.byteLength);
+    out[8]=3;writePosition(out,9,xgid.points);
+    const played=legalSequence(xgid.points,xgid.dice);writePosition(out,35,played.board);
+    view.setInt32(64,1,true);
+    for(let i=0;i<8;i++)view.setInt32(68+i*4,-1,true);
+    played.moves.slice(0,4).forEach((m,i)=>{view.setInt32(68+i*8,m.from,true);view.setInt32(72+i*8,m.to,true);});
+    view.setInt32(100,xgid.dice[0],true);view.setInt32(104,xgid.dice[1],true);
+    view.setInt32(108,xgid.cubePos*xgid.cubeExp,true);
+    writePosition(out,124,xgid.points);
+    view.setInt32(124+40,xgid.playerScore,true);view.setInt32(124+44,xgid.oppScore,true);
+    view.setInt32(124+48,xgid.cubeExp,true);view.setInt32(124+52,xgid.cubePos,true);
+    view.setInt32(124+56,(xgid.matchLength>0&&xgid.rules===1)?1:0,true);
+    invalidateMove(out,view);setDouble(view,2320,-1000);
+    return out;
+  }
+  function makeSourceCube(template,xgid){
+    const out=cloneBytes(template),view=new DataView(out.buffer,out.byteOffset,out.byteLength),dd=64;
+    out[8]=2;view.setInt32(12,1,true);view.setInt32(16,0,true);view.setInt32(20,0,true);view.setInt32(24,0,true);
+    view.setInt32(32,xgid.cubePos*xgid.cubeExp,true);writePosition(out,36,xgid.points);writePosition(out,dd,xgid.points);
+    view.setInt32(dd+32,xgid.playerScore,true);view.setInt32(dd+36,xgid.oppScore,true);
+    view.setInt32(dd+40,xgid.cubeExp,true);view.setInt32(dd+44,xgid.cubePos,true);
+    view.setInt32(dd+48,xgid.matchLength===0&&xgid.rules&1?1:0,true);view.setInt16(dd+52,(xgid.matchLength>0&&xgid.rules===1)?1:0,true);
+    invalidateCube(out,view);return out;
+  }
+
+  async function parsedFromXgid(value){
+    const xgid=parseXgid(value);
+    let response;
+    try{response=await fetch("assets/xgid-template.xgp?v=16",{cache:"no-store"});}catch{throw new Error("XGID用テンプレートを読み込めません。");}
+    if(!response.ok)throw new Error("XGID用テンプレートを読み込めません。");
+    const parsed=await parsePackage(await response.arrayBuffer());
+    const tempXg=parsed.entries.find(e=>e.name.toLowerCase()==="temp.xg");
+    const tempXgi=parsed.entries.find(e=>e.name.toLowerCase()==="temp.xgi");
+    if(!tempXg||tempXg.bytes.length<3*SAVE_REC_SIZE||!tempXgi||tempXgi.bytes.length<2*SAVE_REC_SIZE)throw new Error("XGID用テンプレートが不正です。");
+    const matchHeader=patchSourceMatchHeader(tempXg.bytes.slice(0,SAVE_REC_SIZE),xgid);
+    const gameHeader=patchSourceGameHeader(tempXg.bytes.slice(SAVE_REC_SIZE,2*SAVE_REC_SIZE),xgid);
+    const cubeTemplate=tempXg.bytes.slice(2*SAVE_REC_SIZE,3*SAVE_REC_SIZE);
+    const moveTemplate=tempXgi.bytes.slice(SAVE_REC_SIZE,2*SAVE_REC_SIZE);
+    const event=xgid.diceText==="00"?makeSourceCube(cubeTemplate,xgid):makeSourceMove(moveTemplate,xgid);
+    parsed.entries=parsed.entries.map(entry=>{
+      const lower=entry.name.toLowerCase();
+      if(lower==="temp.xg")return {...entry,bytes:concat([matchHeader,gameHeader,event])};
+      if(lower==="temp.xgi")return {...entry,bytes:concat([matchHeader,event])};
+      return {...entry,bytes:cloneBytes(entry.bytes)};
+    });
+    parsed.orientation=1;
+    return parsed;
+  }
+
   async function generateBatch(input, options = {}) {
-    const parsed = await parsePackage(input);
+    const parsed = typeof input === "string" ? await parsedFromXgid(input) : await parsePackage(input);
     const variants = makeVariants();
     if (variants.length !== 34) throw new Error("34条件の生成に失敗しました。");
     const files = [];
@@ -535,5 +686,5 @@ window.ScoreMapXGBatch = (() => {
     };
   }
 
-  return {generateBatch, makeVariants, buildScoreMapJson};
+  return {generateBatch, makeVariants, buildScoreMapJson, parseXgid};
 })();
