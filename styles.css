@@ -164,3 +164,11 @@ main{width:min(1580px,calc(100% - 32px));margin:0 auto;padding:18px 0 48px}
   .xgid-copy svg{width:16px;height:16px}
   .xgid-map-summary{text-align:left}
 }
+
+/* v20: cells without a record/input have no outer border */
+.score-cell.empty,
+.score-cell.invalid,
+.xgid-cell.excluded,
+.xgid-cell.invalid{
+  border-color:transparent;
+}
