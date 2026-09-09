@@ -32,8 +32,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout latest main
         uses: actions/checkout@v6
+        with:
+          # 公開処理は position JSON と index.json を連続 commit するため、
+          # workflow を起動した古い commit ではなく常に最新 main を配信する。
+          ref: main
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v6
