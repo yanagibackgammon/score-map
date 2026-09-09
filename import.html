@@ -4,39 +4,37 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#ffffff">
-  <title>Score Map Import</title>
+  <title>Score Map | YANAGI Backgammon</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <header class="page-header">
-    <div class="title-group">
-      <h1>IMPORT</h1>
-      <div class="creator">
-        <span>Created by</span>
-        <a href="https://yanagibackgammon.github.io/" target="_blank" rel="noopener noreferrer">YANAGI Backgammon</a>
+    <div class="header-inner">
+      <div class="title-group">
+        <h1>SCORE MAP</h1>
+        <div class="creator">
+          <span>Created by</span>
+          <a href="https://yanagibackgammon.github.io/" target="_blank" rel="noopener noreferrer">YANAGI Backgammon</a>
+        </div>
       </div>
+      <a class="page-switch" href="index.html">公開</a>
     </div>
   </header>
 
   <main class="import-main">
     <section class="import-card">
       <label class="field-label" for="title-input">DISPLAY TEXT</label>
-      <input id="title-input" class="title-input" type="text" placeholder="ポジション＆スコア表の上に表示する任意の文字列">
+      <input id="title-input" class="title-input" type="text">
 
       <label class="field-label">XG / XGP</label>
       <div id="drop-zone" class="drop-zone" tabindex="0" role="button">
-        <strong>XG棋譜をドラッグ＆ドロップ</strong>
-        <span>またはクリックしてローカルファイルを選択</span>
+        <strong>XG / XGP</strong>
         <input id="file-input" type="file" accept=".xg,.xgp" hidden>
       </div>
       <div id="file-info" class="file-info">未選択</div>
 
-      <div class="privacy-note">
-        選択したファイルはブラウザ内で読み込みます。この初版ではGitHubや外部サーバーへ送信しません。
-      </div>
-
       <button id="preview-button" class="primary-button" type="button" disabled>PREVIEW</button>
-      <p class="import-status" id="import-status">XG解析結果の自動抽出処理は次段階で接続します。</p>
+      <p class="import-status" id="import-status" hidden></p>
     </section>
   </main>
 
