@@ -1,15 +1,15 @@
 "use strict";
 const AXES=[
-  {key:"pc",label:"Post Crawford",html:"Post<br>Crawford",short:"PC"},
-  {key:"c",label:"Crawford",short:"C"},
-  {key:"2",label:"2away",short:"2a"},
-  {key:"3",label:"3away",short:"3a"},
-  {key:"4",label:"4away",short:"4a"},
-  {key:"5",label:"5away",short:"5a"}
+  {key:"pc",short:"PC"},
+  {key:"c",short:"C"},
+  {key:"2",short:"2a"},
+  {key:"3",short:"3a"},
+  {key:"4",short:"4a"},
+  {key:"5",short:"5a"}
 ];
 const FALLBACK={
   id:"001",title:"",
-  board:{points:[0,-2,0,0,0,0,0,0,3,0,0,0,-5,5,0,0,0,-3,0,-5,0,0,0,0,2,0],dice:[3,1],cubeValue:1,cubeOwner:"center",matchLength:5,blackScore:0,whiteScore:0,crawford:false},
+  board:{points:[0,-2,0,0,0,0,0,0,3,0,0,0,-5,5,0,0,0,-3,0,-5,0,0,0,0,2,0],dice:[],cubeValue:1,cubeOwner:"center",matchLength:5,blackScore:0,whiteScore:0,crawford:false},
   results:{}
 };
 const invalid=(r,c)=>(r==="pc"&&c==="c")||(r==="c"&&c==="pc");
@@ -35,6 +35,17 @@ function targetEligible(data,r,c){
   if(targets)return targets.has(keyFor(r,c));
   return derivedTargetEligible(data,r,c);
 }
+function derivedAutomatic(data,r,c){
+  if(!derivedTargetEligible(data,r,c))return false;
+  if(r==="pc"&&c==="pc")return false;
+  const cubeValue=Math.max(1,Number(data?.board?.cubeValue)||1);
+  return cubeValue>=awayForAxis(c)&&cubeValue<awayForAxis(r);
+}
+function isAutomatic(data,r,c){
+  const targets=Array.isArray(data?.automaticTargets)?new Set(data.automaticTargets):null;
+  if(targets)return targets.has(keyFor(r,c));
+  return derivedAutomatic(data,r,c);
+}
 const ACTION_COLORS={
   noDouble:"#CCFFFF",
   doubleTake:"#CCFFCC",
@@ -53,7 +64,20 @@ function actionColor(action){
   if(value.includes("nodouble")||value.includes("noredouble"))return ACTION_COLORS.noDouble;
   return ACTION_COLORS.other;
 }
-async function load(){try{const res=await fetch("data/positions/001.json",{cache:"no-store"});if(!res.ok)throw 0;return await res.json()}catch{return FALLBACK}}
+function requestedId(){
+  const raw=new URLSearchParams(location.search).get("id")||"001";
+  return /^\d{3,}$/.test(raw)?raw:"001";
+}
+async function load(){
+  const id=requestedId();
+  try{
+    const res=await fetch(`data/positions/${encodeURIComponent(id)}.json`,{cache:"no-store"});
+    if(!res.ok)throw new Error("not found");
+    return await res.json();
+  }catch{
+    return {...FALLBACK,id};
+  }
+}
 function errorAlternative(item){
   const candidates=Array.isArray(item?.candidates)?item.candidates:[];
   if(!item?.best||!candidates.length)return null;
@@ -75,13 +99,8 @@ function errorAlternative(item){
   diff=Math.max(0,diff);
   return {move:String(candidate.move||""),diff};
 }
-function formatErrorValue(value){
-  const n=Math.max(0,Number(value)||0);
-  return `-${n.toFixed(3)}`;
-}
-function escapeHtml(value){
-  return String(value??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
-}
+function formatErrorValue(value){return `-${Math.max(0,Number(value)||0).toFixed(3)}`}
+function escapeHtml(value){return String(value??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
 function renderTable(data){
   const table=document.getElementById("score-table");
   const axisLabel=a=>`<span class="axis-label">${a.short}</span>`;
@@ -91,43 +110,42 @@ function renderTable(data){
     for(const c of AXES){
       if(invalid(r.key,c.key)){
         let note="";
-        if(r.key==="c"&&c.key==="pc") note='<span class="invalid-label top">↑UNLIMITED</span>';
-        if(r.key==="pc"&&c.key==="c") note='<span class="invalid-label bottom">↓DMP</span>';
+        if(r.key==="c"&&c.key==="pc")note='<span class="invalid-label top">↑UNLIMITED</span>';
+        if(r.key==="pc"&&c.key==="c")note='<span class="invalid-label bottom">↓DMP</span>';
         html+=`<td class="score-cell invalid" aria-label="not applicable">${note}</td>`;
         continue;
       }
       const k=keyFor(r.key,c.key);
       const eligible=targetEligible(data,r.key,c.key);
       const item=eligible?((data.results||{})[k]||{}):{};
-      const best=item.best||"—",bg=item.best?actionColor(item.best):"";
+      const best=item.best||"—";
+      const bg=item.best?actionColor(item.best):"";
+      const automatic=item.best&&isAutomatic(data,r.key,c.key);
+      const automaticHtml=automatic?'<span class="automatic-label">Automatic</span>':"";
       const error=item.best?errorAlternative(item):null;
       const errorHtml=error?`<span class="error-line"><span class="error-action">${escapeHtml(error.move)}</span><span class="error-value">${formatErrorValue(error.diff)}</span></span>`:"";
-      html+=`<td class="score-cell ${item.best?'':'empty'}" ${item.best?`data-move="${escapeHtml(best)}" style="background:${bg}"`:''}><span class="move">${escapeHtml(best)}</span>${errorHtml}</td>`;
+      html+=`<td class="score-cell ${item.best?'':'empty'} ${automatic?'automatic':''}" ${item.best?`data-move="${escapeHtml(best)}" style="background:${bg}"`:''}>${automaticHtml}<span class="move">${escapeHtml(best)}</span>${errorHtml}</td>`;
     }
     html+='</tr>';
   }
-  html+='</tbody>';table.innerHTML=html;
+  html+='</tbody>';
+  table.innerHTML=html;
 }
 (async()=>{
   const data=await load();
   const title=document.getElementById('position-title');
   const displayText=String(data.title||data.displayText||'').trim();
-  if(displayText){title.textContent=displayText;title.hidden=false}else{title.textContent='';title.hidden=true}
+  if(displayText){title.textContent=displayText;title.hidden=false;document.title=`${displayText} | Score Map`}else{title.textContent='';title.hidden=true}
   document.getElementById('board').innerHTML=ScoreMapBoard.render(data.board||{});
   renderTable(data);
 
   const positionCard=document.querySelector('.position-card');
   const mapCard=document.querySelector('.map-card');
   const syncDesktopHeight=()=>{
-    if(window.matchMedia('(min-width:1101px)').matches){
-      mapCard.style.height=`${Math.ceil(positionCard.getBoundingClientRect().height)}px`;
-    }else{
-      mapCard.style.height='';
-    }
+    if(window.matchMedia('(min-width:1101px)').matches)mapCard.style.height=`${Math.ceil(positionCard.getBoundingClientRect().height)}px`;
+    else mapCard.style.height='';
   };
   requestAnimationFrame(syncDesktopHeight);
   window.addEventListener('resize',syncDesktopHeight,{passive:true});
-  if('ResizeObserver' in window){
-    new ResizeObserver(syncDesktopHeight).observe(positionCard);
-  }
+  if('ResizeObserver' in window)new ResizeObserver(syncDesktopHeight).observe(positionCard);
 })();

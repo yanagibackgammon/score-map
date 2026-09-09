@@ -100,9 +100,11 @@ function updateAnalyzedState(){
   analyzedInfo.textContent=generatedPlan?`${analyzedFiles.length} / 最大 ${required}`:'解析用XGIDを先に作成してください';
   jsonButton.disabled=!(generatedPlan&&required>0&&analyzedFiles.length>0&&analyzedFiles.length<=required);
 }
-function finalJsonText(){
+function finalJsonText(id=''){
   if(!generatedData)return '';
-  const data=structuredClone(generatedData);data.title=titleInput.value.trim();
+  const data=structuredClone(generatedData);
+  data.id=String(id||data.id||'');
+  data.title=titleInput.value.trim();
   return JSON.stringify(data,null,2)+'\n';
 }
 function refreshFinalState(){
@@ -156,13 +158,23 @@ jsonButton.addEventListener('click',async()=>{
 });
 
 titleInput.addEventListener('input',refreshFinalState);
-downloadJsonButton.addEventListener('click',()=>{const text=finalJsonText();if(text)downloadBlob(text,'001.json','application/json;charset=utf-8')});
+downloadJsonButton.addEventListener('click',()=>{
+  const text=finalJsonText();if(!text)return;
+  const d=new Date(),pad=n=>String(n).padStart(2,'0');
+  const stamp=`${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+  downloadBlob(text,`score-map_${stamp}.json`,'application/json;charset=utf-8');
+});
 tokenInput.addEventListener('input',refreshFinalState);
 
 function base64Utf8(text){
   const bytes=new TextEncoder().encode(text);let bin='';const chunk=0x8000;
   for(let i=0;i<bytes.length;i+=chunk)bin+=String.fromCharCode(...bytes.subarray(i,i+chunk));
   return btoa(bin);
+}
+function decodeBase64Utf8(value){
+  const bin=atob(String(value||'').replace(/\s+/g,''));
+  const bytes=Uint8Array.from(bin,c=>c.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
 }
 async function githubRequest(url,options={}){
   const token=tokenInput.value.trim();
@@ -171,16 +183,66 @@ async function githubRequest(url,options={}){
   if(!res.ok){let detail='';try{const body=await res.json();detail=body?.message||''}catch{}const err=new Error(`GitHub API ${res.status}${detail?`: ${detail}`:''}`);err.status=res.status;throw err}
   return res.status===204?null:res.json();
 }
+function manifestEntryFromPosition(data,id){
+  return {id:String(id),title:String(data?.title||'').trim(),generatedAt:String(data?.generatedAt||new Date().toISOString())};
+}
+async function loadPublishManifest(){
+  const base='https://api.github.com/repos/yanagibackgammon/score-map/contents/data/positions';
+  try{
+    const current=await githubRequest(`${base}/index.json?ref=main`);
+    const parsed=JSON.parse(decodeBase64Utf8(current.content));
+    return {data:{schemaVersion:1,positions:Array.isArray(parsed?.positions)?parsed.positions:[]},sha:current.sha||null,exists:true};
+  }catch(error){
+    if(error.status!==404)throw error;
+  }
+  const positions=[];
+  // v23 and earlier used only 001.json. Bring it into the first manifest automatically.
+  try{
+    const first=await githubRequest(`${base}/001.json?ref=main`);
+    const data=JSON.parse(decodeBase64Utf8(first.content));
+    positions.push(manifestEntryFromPosition(data,'001'));
+  }catch(error){if(error.status!==404)throw error}
+  return {data:{schemaVersion:1,positions},sha:null,exists:false};
+}
+function nextPositionNumber(positions){
+  const nums=positions.map(x=>Number.parseInt(x?.id,10)).filter(Number.isFinite);
+  return (nums.length?Math.max(...nums):0)+1;
+}
+async function findAvailableId(startNumber){
+  const base='https://api.github.com/repos/yanagibackgammon/score-map/contents/data/positions';
+  let n=startNumber;
+  for(let attempts=0;attempts<1000;attempts++,n++){
+    const id=String(n).padStart(3,'0');
+    try{await githubRequest(`${base}/${id}.json?ref=main`)}catch(error){if(error.status===404)return id;throw error}
+  }
+  throw new Error('空きIDを取得できませんでした。');
+}
 
 publishButton.addEventListener('click',async()=>{
-  const generatedJson=finalJsonText();if(!generatedJson||!tokenInput.value.trim())return;
-  publishButton.disabled=true;publicLink.hidden=true;showStatus(publishStatus,'GitHubへ反映しています…');
-  const api='https://api.github.com/repos/yanagibackgammon/score-map/contents/data/positions/001.json';
+  if(!generatedData||!tokenInput.value.trim())return;
+  publishButton.disabled=true;publicLink.hidden=true;showStatus(publishStatus,'新しいポジションとしてGitHubへ追加しています…');
+  const base='https://api.github.com/repos/yanagibackgammon/score-map/contents/data/positions';
   try{
-    let sha=null;try{const current=await githubRequest(`${api}?ref=main`);sha=current?.sha||null}catch(error){if(error.status!==404)throw error}
-    const body={message:'Update Score Map position data',content:base64Utf8(generatedJson),branch:'main'};if(sha)body.sha=sha;
-    await githubRequest(api,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-    showStatus(publishStatus,'GitHubへ反映しました。PagesはActionsで自動更新されます。');publicLink.hidden=false;
+    const manifest=await loadPublishManifest();
+    const id=await findAvailableId(nextPositionNumber(manifest.data.positions));
+    const positionText=finalJsonText(id);
+    const positionData=JSON.parse(positionText);
+    const createBody={message:`Add Score Map position ${id}`,content:base64Utf8(positionText),branch:'main'};
+    await githubRequest(`${base}/${id}.json`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(createBody)});
+
+    const entries=[...manifest.data.positions.filter(x=>String(x?.id)!==id),manifestEntryFromPosition(positionData,id)]
+      .sort((a,b)=>(Number.parseInt(a.id,10)||0)-(Number.parseInt(b.id,10)||0));
+    const manifestData={schemaVersion:1,updatedAt:new Date().toISOString(),positions:entries};
+    const manifestBody={message:`Update Score Map index for ${id}`,content:base64Utf8(JSON.stringify(manifestData,null,2)+'\n'),branch:'main'};
+    if(manifest.sha)manifestBody.sha=manifest.sha;
+    await githubRequest(`${base}/index.json`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(manifestBody)});
+
+    generatedData.id=id;
+    jsonPreview.value=finalJsonText(id);
+    publicLink.href=`position.html?id=${encodeURIComponent(id)}`;
+    publicLink.textContent='追加したページを開く';
+    publicLink.hidden=false;
+    showStatus(publishStatus,`${id}.jsonとして追加しました。一覧ページにも1行追加されます。PagesはActionsで自動更新されます。`);
   }catch(error){console.error(error);showStatus(publishStatus,error?.message||'GitHubへの反映に失敗しました。',true)}
   finally{refreshFinalState()}
 });

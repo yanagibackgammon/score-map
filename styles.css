@@ -183,3 +183,31 @@ main{width:min(1580px,calc(100% - 32px));margin:0 auto;padding:18px 0 48px}
   .score-cell{gap:3px}
   .score-cell .error-line{gap:3px;font-size:8px;line-height:1.05}
 }
+
+/* v24: automatic cube label */
+.score-cell .automatic-label{display:block;flex:0 0 auto;margin-bottom:-1px;color:rgba(17,17,17,.58);font-size:9px;font-weight:800;line-height:1;letter-spacing:.02em}
+.score-cell.automatic{gap:3px}
+@media(max-width:720px){
+  .score-cell .automatic-label{font-size:7px;line-height:1}
+  .score-cell.automatic{gap:2px}
+}
+
+/* v24: root position list */
+.list-main{width:min(980px,calc(100% - 32px));padding-top:24px}
+.list-title{margin:0 0 12px;padding-bottom:8px;border-bottom:2px solid var(--theme);font-size:20px;font-weight:900;line-height:1.2}
+.position-list{border-top:1px solid #e1e4e6}
+.position-list-row{min-height:52px;padding:0 14px;display:flex;align-items:center;justify-content:space-between;gap:16px;border-bottom:1px solid #e1e4e6;color:#111;text-decoration:none;background:#fff}
+.position-list-row:hover{background:#faf8f3}
+.position-list-name{min-width:0;font-size:14px;font-weight:800;overflow-wrap:anywhere}
+.position-list-arrow{flex:0 0 auto;color:var(--theme);font-size:25px;font-weight:400;line-height:1}
+.position-list-status{margin:18px 0 0;color:#737b80;font-size:12px;text-align:center}
+@media(max-width:720px){
+  .title-group{gap:6px}
+  h1{font-size:29px}
+  .page-switch{min-width:44px;height:29px;padding:0 7px;font-size:11px}
+  .creator{font-size:8px}.creator a{font-size:10px}
+  .list-main{width:calc(100% - 16px);padding-top:16px}
+  .list-title{font-size:18px}
+  .position-list-row{min-height:48px;padding:0 10px}
+  .position-list-name{font-size:13px}
+}

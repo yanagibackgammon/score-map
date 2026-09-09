@@ -5,14 +5,14 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#ffffff">
   <title>Score Map | YANAGI Backgammon</title>
-  <link rel="stylesheet" href="styles.css?v=23">
+  <link rel="stylesheet" href="styles.css?v=24">
 </head>
 <body>
   <header class="page-header">
     <div class="header-inner">
       <div class="title-group">
         <h1>SCORE MAP</h1>
-        <a class="page-switch" href="index.html">公開</a>
+        <a class="page-switch" href="index.html">一覧</a>
         <div class="creator">
           <span>Created by</span>
           <a href="https://yanagibackgammon.github.io/" target="_blank" rel="noopener noreferrer">YANAGI Backgammon</a>
@@ -65,7 +65,7 @@
 
     <section class="workflow-step">
       <h2 class="step-title">③ ポジションタイトル設定・公開</h2>
-      <p class="step-description">公開ページに表示するポジションタイトルを設定します。JSONを保存するか、そのままGitHubへ反映できます。</p>
+      <p class="step-description">公開ページに表示するポジションタイトルを設定します。JSONを保存するか、新しいポジションとしてGitHubへ追加できます。公開するたびに自動採番され、一覧ページに1行追加されます。</p>
       <div class="io-area">
         <div class="io-heading">入力</div>
         <label class="field-label" for="title-input">ポジションタイトル</label>
@@ -78,7 +78,7 @@
       </div>
       <div class="io-area io-output">
         <div class="io-heading">出力</div>
-        <button id="download-json-button" class="secondary-button" type="button" disabled>001.jsonを保存</button>
+        <button id="download-json-button" class="secondary-button" type="button" disabled>JSONを保存</button>
         <button id="publish-button" class="primary-button" type="button" disabled>GitHubへ反映</button>
         <p class="import-status" id="publish-status" hidden></p>
         <a id="public-link" class="public-link" href="index.html" hidden>公開ページを開く</a>
@@ -86,7 +86,7 @@
     </section>
   </main>
 
-  <script src="xg-batch.js?v=22"></script>
-  <script src="import.js?v=22"></script>
+  <script src="xg-batch.js?v=24"></script>
+  <script src="import.js?v=24"></script>
 </body>
 </html>

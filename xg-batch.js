@@ -871,16 +871,21 @@ window.ScoreMapXGBatch = (() => {
   }
 
   function xgidEligibility(source,variant){
-    if(variant.crawford)return {eligible:false,reason:"Crawford"};
-    if(variant.dmp)return {eligible:false,reason:"DMP"};
-    if(source.cubePos<0)return {eligible:false,reason:"相手キューブ"};
-    if(Number.isFinite(source.maxCube)&&source.maxCube>=0&&source.cubeExp>=source.maxCube)return {eligible:false,reason:"最大キューブ"};
+    if(variant.crawford)return {eligible:false,reason:"Crawford",automatic:false};
+    if(variant.dmp)return {eligible:false,reason:"DMP",automatic:false};
+    if(source.cubePos<0)return {eligible:false,reason:"相手キューブ",automatic:false};
+    if(Number.isFinite(source.maxCube)&&source.maxCube>=0&&source.cubeExp>=source.maxCube)return {eligible:false,reason:"最大キューブ",automatic:false};
+    let automatic=false;
     if(!variant.unlimited){
       const cubeValue=Math.pow(2,Math.max(0,source.cubeExp));
       const ownAway=awayForAxis(variant.black);
-      if(cubeValue>=ownAway)return {eligible:false,reason:"ダブル不要"};
+      const opponentAway=awayForAxis(variant.white);
+      if(cubeValue>=ownAway)return {eligible:false,reason:"ダブル不要",automatic:false};
+      // Opponent already loses the match at the current cube value, while we do not.
+      // Raising the cube cannot worsen our loss but can improve our win: automatic double/redouble.
+      automatic=cubeValue>=opponentAway&&cubeValue<ownAway;
     }
-    return {eligible:true,reason:""};
+    return {eligible:true,reason:"",automatic};
   }
 
   function buildVariantXgid(source,variant){
@@ -916,6 +921,7 @@ window.ScoreMapXGBatch = (() => {
         key:variantKey(variant),
         eligible:status.eligible,
         reason:status.reason,
+        automatic:!!status.automatic,
         xgid:status.eligible?buildVariantXgid(source,variant):null
       };
     });
@@ -971,11 +977,12 @@ window.ScoreMapXGBatch = (() => {
     }
     return {
       schemaVersion:1,
-      id:"001",
+      id:"",
       title:String(options.title||"").trim(),
       generatedAt:new Date().toISOString(),
       source:"eXtreme Gammon 2",
       analysisTargets:activeItems.map(item=>item.key),
+      automaticTargets:activeItems.filter(item=>item.automatic).map(item=>item.key),
       board:{points:boardSource.position,dice:[],cubeValue:cube.cubeValue,cubeOwner:cube.cubeOwner,maxCube:sourceXgid?.maxCube??null,matchLength:5,blackScore:0,whiteScore:0,crawford:false},
       results
     };
