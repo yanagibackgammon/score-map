@@ -21,22 +21,22 @@ main{width:min(1580px,calc(100% - 32px));margin:0 auto;padding:18px 0 48px}
 .content-grid{display:grid;grid-template-columns:minmax(360px,.88fr) minmax(720px,1.45fr);gap:16px;align-items:stretch}
 .position-card,.map-card{min-width:0;background:#fff}
 .position-card{display:flex;flex-direction:column;margin:0;overflow:hidden}
-.position-title{flex:0 0 auto;margin:0 0 4px;padding:0 0 3px;border-bottom:1px solid #111;font-size:22px;font-weight:800;line-height:1.3;color:#111;overflow-wrap:anywhere}
+.position-title{flex:0 0 auto;margin:0 0 1px;padding:0;font-size:22px;font-weight:800;line-height:1.18;color:#111;overflow-wrap:anywhere}
 .position-title[hidden]{display:none}
-.board-wrap{flex:1;min-height:0;padding:0;display:flex;align-items:center;justify-content:center;background:#fff}
+.board-wrap{flex:0 0 auto;min-height:0;padding:0;display:flex;align-items:flex-start;justify-content:center;background:#fff;line-height:0}
 .board-wrap svg{display:block;width:100%;height:auto;max-width:760px;background:#fff}
 .map-card{display:block;min-width:0;overflow:hidden}
 .table-scroll{width:100%;height:100%;overflow-x:auto;padding:0;background:#fff}
 .score-table{width:100%;min-width:760px;height:100%;border-collapse:separate;border-spacing:2px;table-layout:fixed}
-.score-table .axis-col{width:116px}
+.score-table .axis-col{width:86px}
 .score-table .score-col{width:auto}
-.score-table th,.score-table td{border:1px solid #c8cdd1;text-align:center;vertical-align:middle;padding:6px}
+.score-table th,.score-table td{border:1px solid #c8cdd1;text-align:center;vertical-align:middle;padding:4px}
 .score-table thead th{height:48px;font-size:13px;font-weight:800}
 .score-table th.corner{background:#fff;color:#111}
 .score-table th.white-axis{background:#fff;color:#111;font-size:13px;font-weight:800}
 .score-table th.black-axis{background:#000;color:#fff;font-size:13px;font-weight:800}
 .score-cell{position:relative;background:#fafafa;color:#111;font-size:14px;font-weight:700;transition:background .15s ease}
-.score-cell .special{display:block;margin-bottom:5px;color:var(--active);font-size:11px;letter-spacing:.03em;text-transform:uppercase}
+.score-cell .special{position:absolute;top:4px;left:4px;right:4px;display:block;margin:0;color:var(--active);font-size:10px;line-height:1;letter-spacing:.02em;text-transform:uppercase;pointer-events:none}
 .score-cell .move{display:block;line-height:1.2;overflow-wrap:anywhere}
 .score-cell.empty .move{color:#9aa0a5;font-weight:500}
 .score-cell.invalid{background:#f2f3f4;color:#a4a9ad;background-image:linear-gradient(135deg,transparent 49%,#c7ccd0 50%,transparent 51%)}
@@ -59,15 +59,16 @@ main{width:min(1580px,calc(100% - 32px));margin:0 auto;padding:18px 0 48px}
 .primary-button:disabled{opacity:.35;cursor:not-allowed}
 .import-status{margin:12px 0 0;color:#70787e;font-size:12px;text-align:center}
 @media(min-width:1101px){
-  .position-card,.map-card{height:620px}
-  .board-wrap svg{max-height:100%;object-fit:contain}
+  .position-card{height:auto}
+  .map-card{height:auto}
+  .board-wrap svg{max-height:none;object-fit:contain}
   .score-table tbody tr{height:calc((100% - 48px)/6)}
 }
 @media(max-width:1100px){
   main{width:min(980px,calc(100% - 24px))}
   .content-grid{display:block}
   .position-card{margin-bottom:14px}
-  .position-title{margin-bottom:3px}
+  .position-title{margin-bottom:1px}
   .board-wrap svg{width:min(100%,780px)}
   .score-table tbody tr{height:76px}
 }
@@ -77,7 +78,7 @@ main{width:min(1580px,calc(100% - 32px));margin:0 auto;padding:18px 0 48px}
   .creator{font-size:9px}.creator a{font-size:11px}
   main{width:100%;padding-top:10px}
   .position-card{padding:0 8px}
-  .position-title{margin-bottom:2px;padding-bottom:2px;font-size:19px}
+  .position-title{margin-bottom:1px;padding-bottom:0;font-size:19px}
   .board-wrap{padding:0}
   .table-scroll{padding:0 8px}
   .score-table{min-width:760px}

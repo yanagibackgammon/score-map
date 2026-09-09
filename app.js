@@ -1,6 +1,6 @@
 "use strict";
 const AXES=[
-  {key:"pc",label:"Post Crawford"},
+  {key:"pc",label:"Post Crawford",html:"Post<br>Crawford"},
   {key:"c",label:"Crawford"},
   {key:"2",label:"2away"},
   {key:"3",label:"3away"},
@@ -22,9 +22,9 @@ function renderTable(data){
   const moves=[...new Set(Object.values(data.results||{}).map(v=>v?.best).filter(Boolean))];
   const colors=new Map(moves.map((m,i)=>[m,palette[i%palette.length]]));
   let html='<colgroup><col class="axis-col">'+AXES.map(()=>'<col class="score-col">').join('')+'</colgroup>';
-  html+='<thead><tr><th class="corner" aria-hidden="true"></th>'+AXES.map(a=>`<th class="white-axis">${a.label}</th>`).join('')+'</tr></thead><tbody>';
+  html+='<thead><tr><th class="corner" aria-hidden="true"></th>'+AXES.map(a=>`<th class="white-axis">${a.html||a.label}</th>`).join('')+'</tr></thead><tbody>';
   for(const r of AXES){
-    html+=`<tr><th class="black-axis">${r.label}</th>`;
+    html+=`<tr><th class="black-axis">${r.html||r.label}</th>`;
     for(const c of AXES){
       if(invalid(r.key,c.key)){html+='<td class="score-cell invalid" aria-label="not applicable"></td>';continue}
       const k=keyFor(r.key,c.key),item=(data.results||{})[k]||{},sp=specialFor(r.key,c.key),best=item.best||"—",bg=item.best?colors.get(item.best):"";
@@ -42,4 +42,19 @@ function renderTable(data){
   if(displayText){title.textContent=displayText;title.hidden=false}else{title.textContent='';title.hidden=true}
   document.getElementById('board').innerHTML=ScoreMapBoard.render(data.board||{});
   renderTable(data);
+
+  const positionCard=document.querySelector('.position-card');
+  const mapCard=document.querySelector('.map-card');
+  const syncDesktopHeight=()=>{
+    if(window.matchMedia('(min-width:1101px)').matches){
+      mapCard.style.height=`${Math.ceil(positionCard.getBoundingClientRect().height)}px`;
+    }else{
+      mapCard.style.height='';
+    }
+  };
+  requestAnimationFrame(syncDesktopHeight);
+  window.addEventListener('resize',syncDesktopHeight,{passive:true});
+  if('ResizeObserver' in window){
+    new ResizeObserver(syncDesktopHeight).observe(positionCard);
+  }
 })();
