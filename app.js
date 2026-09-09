@@ -1,11 +1,11 @@
 "use strict";
 const AXES=[
-  {key:"pc",label:"Post Crawford",html:"Post<br>Crawford"},
-  {key:"c",label:"Crawford"},
-  {key:"2",label:"2away"},
-  {key:"3",label:"3away"},
-  {key:"4",label:"4away"},
-  {key:"5",label:"5away"}
+  {key:"pc",label:"Post Crawford",html:"Post<br>Crawford",short:"PC"},
+  {key:"c",label:"Crawford",short:"C"},
+  {key:"2",label:"2away",short:"2a"},
+  {key:"3",label:"3away",short:"3a"},
+  {key:"4",label:"4away",short:"4a"},
+  {key:"5",label:"5away",short:"5a"}
 ];
 const FALLBACK={
   id:"001",title:"",
@@ -20,9 +20,10 @@ function renderTable(data){
   const table=document.getElementById("score-table"),legend=document.getElementById("legend");
   const moves=[...new Set(Object.values(data.results||{}).map(v=>v?.best).filter(Boolean))];
   const colors=new Map(moves.map((m,i)=>[m,palette[i%palette.length]]));
-  let html='<thead><tr><th class="corner" aria-hidden="true"></th>'+AXES.map(a=>`<th class="white-axis">${a.html||a.label}</th>`).join('')+'</tr></thead><tbody>';
+  const axisLabel=a=>`<span class="axis-label axis-label-desktop">${a.html||a.label}</span><span class="axis-label axis-label-mobile">${a.short}</span>`;
+  let html='<thead><tr><th class="corner" aria-hidden="true"></th>'+AXES.map(a=>`<th class="white-axis">${axisLabel(a)}</th>`).join('')+'</tr></thead><tbody>';
   for(const r of AXES){
-    html+=`<tr><th class="black-axis">${r.html||r.label}</th>`;
+    html+=`<tr><th class="black-axis">${axisLabel(r)}</th>`;
     for(const c of AXES){
       if(invalid(r.key,c.key)){
         let note="";

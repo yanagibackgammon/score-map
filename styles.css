@@ -77,6 +77,14 @@ main{width:min(1580px,calc(100% - 32px));margin:0 auto;padding:18px 0 48px}
   .board-wrap svg{width:min(100%,780px)}
   .score-table{height:auto;grid-template-rows:48px repeat(6,76px)}
 }
+
+@media(max-width:900px){
+  .table-scroll{padding:0 8px;overflow-x:hidden}
+  .score-table{width:100%;min-width:0;grid-template-columns:36px repeat(6,minmax(0,1fr));gap:1px}
+  .score-table th,.score-table td{min-width:0}
+  .axis-label-desktop{display:none}
+  .axis-label-mobile{display:block}
+}
 @media(max-width:720px){
   .header-inner{width:calc(100% - 16px)}
   .page-switch{min-width:52px;height:30px;padding:0 10px;font-size:12px}
