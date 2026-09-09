@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#ffffff">
   <title>Score Map | YANAGI Backgammon</title>
-  <link rel="stylesheet" href="styles.css?v=13">
+  <link rel="stylesheet" href="styles.css?v=15">
 </head>
 <body>
   <header class="page-header">
@@ -21,24 +21,75 @@
     </div>
   </header>
 
-  <main class="import-main">
-    <section class="import-card">
-      <label class="field-label" for="title-input">DISPLAY TEXT</label>
-      <input id="title-input" class="title-input" type="text">
+  <main class="import-main workflow-main">
+    <section class="workflow-step">
+      <h2 class="step-title">① 元ポジションを入力</h2>
+      <p class="step-description">XGで作成した元ポジションを1ファイル選択します。盤面・手番・出目を34条件すべての基準にします。</p>
+      <div class="io-area">
+        <div class="io-heading">入力</div>
+        <label class="field-label" for="title-input">ポジションタイトル</label>
+        <input id="title-input" class="title-input" type="text" placeholder="任意">
 
-      <label class="field-label">XG / XGP</label>
-      <div id="drop-zone" class="drop-zone" tabindex="0" role="button">
-        <strong>XG / XGP</strong>
-        <input id="file-input" type="file" accept=".xg,.xgp" hidden>
+        <label class="field-label">元XG / XGP</label>
+        <div id="drop-zone" class="drop-zone" tabindex="0" role="button">
+          <strong>XG / XGPを選択</strong>
+          <input id="file-input" type="file" accept=".xg,.xgp" hidden>
+        </div>
+        <div id="file-info" class="file-info">未選択</div>
       </div>
-      <div id="file-info" class="file-info">未選択</div>
+    </section>
 
-      <button id="preview-button" class="primary-button" type="button" disabled>CREATE 34 XGP</button>
-      <p class="import-status" id="import-status" hidden></p>
+    <section class="workflow-step">
+      <h2 class="step-title">② 34解析ファイルを出力</h2>
+      <p class="step-description">スコア条件だけを変更した34個のXGPをZIPで出力します。ZIPを展開し、各ファイルをXGで解析して上書き保存してください。</p>
+      <div class="io-area io-output">
+        <div class="io-heading">出力</div>
+        <button id="batch-button" class="primary-button" type="button" disabled>34 XGPをZIP出力</button>
+        <p class="import-status" id="batch-status" hidden></p>
+      </div>
+    </section>
+
+    <section class="workflow-step">
+      <h2 class="step-title">③ 解析済み34XGPからJSONを作成</h2>
+      <p class="step-description">XGで解析・保存した34個のXGPをまとめて選択します。最善手・候補手・エクイティを読み取り、公開用JSONに変換します。</p>
+      <div class="io-area">
+        <div class="io-heading">入力</div>
+        <label class="field-label">解析済み34 XGP</label>
+        <div id="analyzed-zone" class="drop-zone compact-drop" tabindex="0" role="button">
+          <strong>34個のXGPをまとめて選択</strong>
+          <input id="analyzed-input" type="file" accept=".xg,.xgp" multiple hidden>
+        </div>
+        <div id="analyzed-info" class="file-info">0 / 34</div>
+        <button id="json-button" class="primary-button" type="button" disabled>JSONを生成</button>
+        <p class="import-status" id="json-status" hidden></p>
+      </div>
+      <div class="io-area io-output">
+        <div class="io-heading">出力</div>
+        <textarea id="json-preview" class="json-preview" readonly placeholder="生成したJSONがここに表示されます"></textarea>
+        <button id="download-json-button" class="secondary-button" type="button" disabled>001.jsonを保存</button>
+      </div>
+    </section>
+
+    <section class="workflow-step">
+      <h2 class="step-title">④ 公開ページへ反映</h2>
+      <p class="step-description">生成したJSONをGitHubの <code>data/positions/001.json</code> に直接反映します。更新後はGitHub ActionsがPagesを自動更新します。</p>
+      <div class="io-area">
+        <div class="io-heading">入力</div>
+        <label class="field-label" for="github-token">GitHub Fine-grained Token</label>
+        <input id="github-token" class="title-input token-input" type="password" autocomplete="off" spellcheck="false" placeholder="Contents: Read and write">
+        <p class="token-note">トークンはブラウザに保存しません。score-mapリポジトリだけを対象にし、ContentsをRead and writeにしてください。</p>
+        <a class="token-link" href="https://github.com/settings/personal-access-tokens/new?name=Score+Map+Publisher&amp;target_name=yanagibackgammon&amp;expires_in=90&amp;contents=write" target="_blank" rel="noopener noreferrer">Fine-grained Tokenを作成</a>
+      </div>
+      <div class="io-area io-output">
+        <div class="io-heading">出力</div>
+        <button id="publish-button" class="primary-button" type="button" disabled>GitHubへ反映</button>
+        <p class="import-status" id="publish-status" hidden></p>
+        <a id="public-link" class="public-link" href="index.html" hidden>公開ページを開く</a>
+      </div>
     </section>
   </main>
 
-  <script src="xg-batch.js?v=14"></script>
-  <script src="import.js?v=14"></script>
+  <script src="xg-batch.js?v=15"></script>
+  <script src="import.js?v=15"></script>
 </body>
 </html>

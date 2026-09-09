@@ -371,5 +371,169 @@ window.ScoreMapXGBatch = (() => {
     return {zip: buildZip(files), files};
   }
 
-  return {generateBatch, makeVariants};
+
+  function readWideString(bytes, offset, size) {
+    const end = Math.min(bytes.length, offset + size);
+    let out = "";
+    for (let i = offset; i + 1 < end; i += 2) {
+      const code = bytes[i] | (bytes[i + 1] << 8);
+      if (!code) break;
+      out += String.fromCharCode(code);
+    }
+    return out;
+  }
+
+  function i8(bytes, offset) { const v = bytes[offset]; return v > 127 ? v - 256 : v; }
+  function readPosition(rec, offset) { return Array.from({length:26}, (_,i)=>i8(rec, offset+i)); }
+  function readInt8Moves(rec, offset) {
+    const moves=[];
+    for(let i=0;i<8;i+=2){
+      const from=i8(rec,offset+i); if(from===-1)break;
+      const to=i8(rec,offset+i+1); moves.push({fromPoint:from,toPoint:to});
+    }
+    return moves;
+  }
+  function pointName(point){if(point<0)return "Off";if(point===24)return "Bar";return String(point+1)}
+  function applyMoveSegments(moves, position){
+    const board=position.slice(); const rendered=[];
+    for(const move of moves){
+      const from=move.fromPoint,to=move.toPoint,src=from+1;
+      if(src>=1&&src<=25)board[src]-=1;
+      let hit=false;
+      if(to>=0){const dst=to+1;if(dst>=1&&dst<=24){hit=board[dst]===-1;if(hit){board[dst]=1;board[0]-=1}else board[dst]+=1}}
+      rendered.push([from,to,hit]);
+    }
+    return {board,rendered};
+  }
+  function collapseMoves(rendered){
+    if(rendered.length<2)return rendered.slice();
+    const incoming=new Map(),outgoing=new Map();
+    rendered.forEach(([from,to],idx)=>{if(!outgoing.has(from))outgoing.set(from,[]);outgoing.get(from).push(idx);if(to>=0){if(!incoming.has(to))incoming.set(to,[]);incoming.get(to).push(idx)}});
+    const pred=new Map(),succ=new Map();
+    for(const [point,ins] of incoming){const outs=outgoing.get(point)||[];if(ins.length===1&&outs.length===1&&!rendered[ins[0]][2]){succ.set(ins[0],outs[0]);pred.set(outs[0],ins[0])}}
+    const result=[],visited=new Set(),starts=rendered.map((_,i)=>i).filter(i=>!pred.has(i));
+    for(const start of starts){if(visited.has(start))continue;let from=rendered[start][0],cur=start,finalTo=rendered[cur][1],finalHit=rendered[cur][2];visited.add(cur);while(succ.has(cur)){const next=succ.get(cur);if(visited.has(next))break;cur=next;finalTo=rendered[cur][1];finalHit=rendered[cur][2];visited.add(cur)}result.push([from,finalTo,finalHit])}
+    rendered.forEach((edge,i)=>{if(!visited.has(i))result.push(edge)}); return result;
+  }
+  function formatMoves(moves,position){
+    if(!moves.length)return "Cannot Move";
+    const rendered=collapseMoves(applyMoveSegments(moves,position).rendered);
+    rendered.sort((a,b)=>(b[0]-a[0])||(b[1]-a[1]));
+    const labels=rendered.map(([from,to,hit])=>`${pointName(from)}/${pointName(to)}${hit?'*':''}`);
+    const grouped=[];
+    for(const label of labels){const last=grouped[grouped.length-1];if(last&&last.label===label)last.count++;else grouped.push({label,count:1})}
+    return grouped.map(x=>x.count>1?`${x.label}(${x.count})`:x.label).join(' ');
+  }
+  function round6(v){return Number(Number(v).toFixed(6))}
+  const LEVEL_NAMES={0:"1-ply",1:"2-ply",2:"3-ply",12:"3-ply red",3:"4-ply",4:"5-ply",5:"6-ply",6:"7-ply",100:"Rollout",998:"Opening Book V2",999:"Opening Book V1",1000:"XGRoller",1001:"XGRoller+",1002:"XGRoller++"};
+
+  function parseMoveAnalysis(rec){
+    const view=new DataView(rec.buffer,rec.byteOffset,rec.byteLength);
+    const position=readPosition(rec,9);
+    const dice=[view.getInt32(100,true),view.getInt32(104,true)];
+    const cubeA=view.getInt32(108,true);
+    const n=view.getInt32(120,true);
+    if(n<=0||n>32)return null;
+    const candidates=[]; const base=124, movesBase=base+900, levelBase=base+1156, evalBase=base+1284;
+    for(let i=0;i<Math.min(n,32);i++){
+      const moves=readInt8Moves(rec,movesBase+i*8);
+      const eo=evalBase+i*28;
+      const equity=view.getFloat32(eo+24,true);
+      if(!Number.isFinite(equity)||equity<=-999)continue;
+      const level=view.getInt16(levelBase+i*4,true);
+      candidates.push({move:formatMoves(moves,position),equity:round6(equity),level,analysisLevel:LEVEL_NAMES[level]||String(level)});
+    }
+    if(!candidates.length)return null;
+    const bestEq=candidates[0].equity;
+    candidates.forEach(c=>c.diff=round6(bestEq-c.equity));
+    return {type:"move",best:candidates[0].move,equity:bestEq,candidates,position,dice,cubeA};
+  }
+
+  function parseCubeAnalysis(rec){
+    const view=new DataView(rec.buffer,rec.byteOffset,rec.byteLength),dd=64;
+    const position=readPosition(rec,36),cubeB=view.getInt32(32,true);
+    const equNo=view.getFloat32(dd+88,true),equTake=view.getFloat32(dd+92,true),equDrop=view.getFloat32(dd+96,true);
+    if([equNo,equTake,equDrop].some(v=>!Number.isFinite(v)||v<=-999))return null;
+    const doubleEquity=Math.min(equTake,equDrop);
+    let best,equity;
+    if(doubleEquity>equNo){best=equTake<=equDrop?"Double / Take":"Double / Pass";equity=doubleEquity}else{best="No Double";equity=equNo}
+    const level=view.getInt16(dd+100,true);
+    return {type:"cube",best,equity:round6(equity),candidates:[
+      {move:"No Double",equity:round6(equNo),diff:round6(equity-equNo),analysisLevel:LEVEL_NAMES[level]||String(level)},
+      {move:"Double / Take",equity:round6(equTake),diff:round6(equity-equTake),analysisLevel:LEVEL_NAMES[level]||String(level)},
+      {move:"Double / Pass",equity:round6(equDrop),diff:round6(equity-equDrop),analysisLevel:LEVEL_NAMES[level]||String(level)}
+    ],position,dice:[],cubeA:cubeB};
+  }
+
+  function parseAnalyzedStream(bytes){
+    if(bytes.length%SAVE_REC_SIZE!==0)throw new Error("XG本体のレコード形式を読み取れません。");
+    let lastEvent=null,matchLength=5,gameScore=[0,0],crawford=false;
+    for(let off=0;off<bytes.length;off+=SAVE_REC_SIZE){
+      const rec=bytes.subarray(off,off+SAVE_REC_SIZE),type=rec[8],view=new DataView(rec.buffer,rec.byteOffset,rec.byteLength);
+      if(type===0)matchLength=view.getInt32(92,true);
+      else if(type===1){gameScore=[view.getInt32(12,true),view.getInt32(16,true)];crawford=!!view.getUint8(20)}
+      else if(type===3){const x=parseMoveAnalysis(rec);if(x)lastEvent=x}
+      else if(type===2){const x=parseCubeAnalysis(rec);if(x)lastEvent=x}
+    }
+    if(!lastEvent)throw new Error("XGの解析結果が見つかりません。XGで解析後に上書き保存してください。");
+    return {...lastEvent,matchLength,gameScore,crawford};
+  }
+
+  function variantKey(variant){
+    if(variant.unlimited)return "unlimited";
+    if(variant.dmp)return "dmp";
+    const norm=x=>x==="PC"?"pc":x==="C"?"c":x.replace("a","");
+    return `${norm(variant.black)}-${norm(variant.white)}`;
+  }
+  function variantBaseName(name){return String(name||"").replace(/\.(xg|xgp)$/i,"").toLowerCase()}
+  function expectedVariantForName(name){
+    const base=variantBaseName(name);
+    return makeVariants().find(v=>variantBaseName(v.filename)===base)||null;
+  }
+  function cubeDisplay(cubeA){
+    const n=Number(cubeA)||0;if(n===0)return {cubeValue:1,cubeOwner:"center"};
+    return {cubeValue:Math.pow(2,Math.abs(n)),cubeOwner:n>0?"black":"white"};
+  }
+  function titleFromParsed(parsed){
+    const save=readWideString(parsed.richPrefix,2088,2048).trim();
+    return save.replace(/\s*\/\s*(UNLIMITED|DMP|BLACK\s+.+)$/i,"").trim();
+  }
+  async function parseAnalyzedPackage(input){
+    const parsed=await parsePackage(input);
+    const main=parsed.entries.find(e=>e.name.toLowerCase()==="temp.xg");
+    if(!main)throw new Error("XG/XGP内にtemp.xgがありません。");
+    return {parsed,analysis:parseAnalyzedStream(main.bytes),title:titleFromParsed(parsed)};
+  }
+
+  async function buildScoreMapJson(inputs,options={}){
+    if(!Array.isArray(inputs)||inputs.length!==34)throw new Error("解析済みXGPを34個選択してください。");
+    const found=new Map();let recoveredTitle="";let boardSource=null;
+    for(const item of inputs){
+      const variant=expectedVariantForName(item.name);
+      if(!variant)throw new Error(`ファイル名を識別できません: ${item.name}`);
+      const key=variantKey(variant);if(found.has(key))throw new Error(`同じ条件のファイルが重複しています: ${item.name}`);
+      let parsed;
+      try{parsed=await parseAnalyzedPackage(item.buffer)}catch(error){throw new Error(`${item.name}: ${error.message}`)}
+      if(!recoveredTitle&&parsed.title)recoveredTitle=parsed.title;
+      found.set(key,{variant,...parsed.analysis});
+      if(variant.black==="5a"&&variant.white==="5a")boardSource=parsed.analysis;
+    }
+    const expected=makeVariants().map(variantKey),missing=expected.filter(k=>!found.has(k));
+    if(missing.length)throw new Error(`不足している条件があります: ${missing.join(', ')}`);
+    boardSource=boardSource||found.values().next().value;
+    const cube=cubeDisplay(boardSource.cubeA);
+    const results={};
+    for(const key of expected){const a=found.get(key);results[key]={best:a.best,equity:a.equity,candidates:a.candidates,type:a.type}}
+    return {
+      schemaVersion:1,
+      id:"001",
+      title:String(options.title||recoveredTitle||"").trim(),
+      generatedAt:new Date().toISOString(),
+      source:"eXtreme Gammon 2",
+      board:{points:boardSource.position,dice:boardSource.dice,cubeValue:cube.cubeValue,cubeOwner:cube.cubeOwner,matchLength:5,blackScore:0,whiteScore:0,crawford:false},
+      results
+    };
+  }
+
+  return {generateBatch, makeVariants, buildScoreMapJson};
 })();
