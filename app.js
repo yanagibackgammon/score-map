@@ -54,9 +54,36 @@ function actionColor(action){
   return ACTION_COLORS.other;
 }
 async function load(){try{const res=await fetch("data/positions/001.json",{cache:"no-store"});if(!res.ok)throw 0;return await res.json()}catch{return FALLBACK}}
+function errorAlternative(item){
+  const candidates=Array.isArray(item?.candidates)?item.candidates:[];
+  if(!item?.best||!candidates.length)return null;
+  const norm=value=>String(value||"").toLowerCase().replace(/\s+/g,"");
+  const best=norm(item.best);
+  let candidate=null;
+  if(best.includes("nodouble")||best.includes("noredouble")||best.includes("toogood")){
+    const doubles=candidates.filter(c=>{const m=norm(c.move);return m.includes("/take")||m.includes("/pass")});
+    if(doubles.length)candidate=doubles.reduce((a,b)=>Number(a.equity)<=Number(b.equity)?a:b);
+  }else{
+    candidate=candidates.find(c=>{const m=norm(c.move);return m.includes("nodouble")||m.includes("noredouble")})||null;
+  }
+  if(!candidate)return null;
+  const bestEq=Number(item.equity);
+  const candEq=Number(candidate.equity);
+  let diff=Number(candidate.diff);
+  if(!Number.isFinite(diff)&&Number.isFinite(bestEq)&&Number.isFinite(candEq))diff=bestEq-candEq;
+  if(!Number.isFinite(diff))return null;
+  diff=Math.max(0,diff);
+  return {move:String(candidate.move||""),diff};
+}
+function formatErrorValue(value){
+  const n=Math.max(0,Number(value)||0);
+  return `-${n.toFixed(3)}`;
+}
+function escapeHtml(value){
+  return String(value??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
 function renderTable(data){
-  const table=document.getElementById("score-table"),legend=document.getElementById("legend");
-  const displayedMoves=[];
+  const table=document.getElementById("score-table");
   const axisLabel=a=>`<span class="axis-label">${a.short}</span>`;
   let html='<thead><tr><th class="corner" aria-hidden="true"></th>'+AXES.map(a=>`<th class="white-axis">${axisLabel(a)}</th>`).join('')+'</tr></thead><tbody>';
   for(const r of AXES){
@@ -73,14 +100,13 @@ function renderTable(data){
       const eligible=targetEligible(data,r.key,c.key);
       const item=eligible?((data.results||{})[k]||{}):{};
       const best=item.best||"—",bg=item.best?actionColor(item.best):"";
-      if(item.best)displayedMoves.push(item.best);
-      html+=`<td class="score-cell ${item.best?'':'empty'}" ${item.best?`data-move="${best.replace(/"/g,'&quot;')}" style="background:${bg}"`:''}><span class="move">${best}</span></td>`;
+      const error=item.best?errorAlternative(item):null;
+      const errorHtml=error?`<span class="error-line"><span class="error-action">${escapeHtml(error.move)}</span><span class="error-value">${formatErrorValue(error.diff)}</span></span>`:"";
+      html+=`<td class="score-cell ${item.best?'':'empty'}" ${item.best?`data-move="${escapeHtml(best)}" style="background:${bg}"`:''}><span class="move">${escapeHtml(best)}</span>${errorHtml}</td>`;
     }
     html+='</tr>';
   }
   html+='</tbody>';table.innerHTML=html;
-  const moves=[...new Set(displayedMoves)];
-  legend.innerHTML=moves.length?moves.map(m=>`<span class="legend-item"><span class="legend-swatch" style="background:${actionColor(m)}"></span>${m}</span>`).join(''):'';
 }
 (async()=>{
   const data=await load();

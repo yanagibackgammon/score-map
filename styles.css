@@ -172,3 +172,14 @@ main{width:min(1580px,calc(100% - 32px));margin:0 auto;padding:18px 0 48px}
 .xgid-cell.invalid{
   border-color:transparent;
 }
+
+/* v23: best action + compact error/blunder alternative */
+.score-cell{flex-direction:column;gap:4px}
+.score-cell .move{flex:0 0 auto}
+.score-cell .error-line{display:flex;align-items:baseline;justify-content:center;gap:5px;max-width:100%;color:rgba(17,17,17,.68);font-size:10px;font-weight:600;line-height:1.15;white-space:nowrap}
+.score-cell .error-action{overflow:hidden;text-overflow:ellipsis}
+.score-cell .error-value{flex:0 0 auto;font-variant-numeric:tabular-nums}
+@media(max-width:720px){
+  .score-cell{gap:3px}
+  .score-cell .error-line{gap:3px;font-size:8px;line-height:1.05}
+}
