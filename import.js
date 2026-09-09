@@ -1,0 +1,6 @@
+"use strict";
+const zone=document.getElementById('drop-zone'),input=document.getElementById('file-input'),info=document.getElementById('file-info'),button=document.getElementById('preview-button'),status=document.getElementById('import-status');
+function setFile(file){if(!file)return;const ext=file.name.toLowerCase().split('.').pop();if(!['xg','xgp'].includes(ext)){info.textContent='XG / XGP ファイルを選択してください。';button.disabled=true;return}info.textContent=`${file.name} / ${(file.size/1024).toFixed(1)} KB`;button.disabled=false;button.dataset.filename=file.name;status.textContent='ローカルファイルを参照しました。XG解析データ抽出は次段階で接続します。'}
+zone.addEventListener('click',()=>input.click());zone.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();input.click()}});input.addEventListener('change',()=>setFile(input.files[0]));
+['dragenter','dragover'].forEach(t=>zone.addEventListener(t,e=>{e.preventDefault();zone.classList.add('is-dragging')}));['dragleave','drop'].forEach(t=>zone.addEventListener(t,e=>{e.preventDefault();zone.classList.remove('is-dragging')}));zone.addEventListener('drop',e=>setFile(e.dataTransfer.files[0]));
+button.addEventListener('click',()=>{status.textContent='ファイル選択部分は正常です。次版でXG解析結果 → 34セルJSON変換を実装します。'});

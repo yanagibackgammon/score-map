@@ -1,0 +1,15 @@
+{
+  "id": "001",
+  "title": "Sample Position",
+  "board": {
+    "points": [0, -2, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, -5, 5, 0, 0, 0, -3, 0, -5, 0, 0, 0, 0, 2, 0],
+    "dice": [3, 1],
+    "cubeValue": 1,
+    "cubeOwner": "center",
+    "matchLength": 5,
+    "blackScore": 0,
+    "whiteScore": 0,
+    "crawford": false
+  },
+  "results": {}
+}
