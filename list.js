@@ -24,7 +24,6 @@ async function fallbackFirst(){
 }
 async function loadEntries(){
   try{
-    // GitHub Pages/CDN・ブラウザ双方の古い index.json を避ける。
     const res=await fetch(freshUrl('data/positions/index.json'),{cache:'no-store'});
     if(!res.ok)throw 0;
     const data=await res.json();
@@ -32,6 +31,20 @@ async function loadEntries(){
     if(entries.length)return entries;
   }catch{}
   return fallbackFirst();
+}
+async function loadPosition(entry){
+  try{
+    const res=await fetch(freshUrl(`data/positions/${encodeURIComponent(entry.id)}.json`),{cache:'no-store'});
+    if(!res.ok)throw 0;
+    const data=await res.json();
+    return {...entry,title:String(data?.title||entry.title||'').trim(),board:data?.board||null};
+  }catch{
+    return {...entry,board:null};
+  }
+}
+function boardHtml(board){
+  if(!board||!window.ScoreMapBoard?.render)return '<div class="position-list-board-missing">盤面を読み込めませんでした</div>';
+  try{return ScoreMapBoard.render(board)}catch{return '<div class="position-list-board-missing">盤面を読み込めませんでした</div>'}
 }
 function render(entries){
   const sorted=[...entries].sort((a,b)=>(Number.parseInt(a.id,10)||0)-(Number.parseInt(b.id,10)||0));
@@ -43,21 +56,23 @@ function render(entries){
   }
   list.innerHTML=sorted.map(item=>{
     const title=item.title||`Position ${item.id}`;
-    return `<a class="position-list-row" href="position.html?id=${encodeURIComponent(item.id)}"><span class="position-list-name">${escapeHtml(title)}</span><span class="position-list-arrow" aria-hidden="true">›</span></a>`;
+    return `<a class="position-list-card" href="position.html?id=${encodeURIComponent(item.id)}" aria-label="${escapeHtml(title)}を開く">
+      <div class="position-list-caption">${escapeHtml(title)}</div>
+      <div class="position-list-board">${boardHtml(item.board)}</div>
+    </a>`;
   }).join('');
   status.hidden=true;
 }
 async function refreshList(){
   const seq=++refreshSeq;
   const entries=await loadEntries();
+  const positions=await Promise.all(entries.map(loadPosition));
   if(seq!==refreshSeq)return;
-  render(entries);
+  render(positions);
   lastLoadedAt=Date.now();
 }
 
 refreshList();
-// 戻る操作でBFCacheから復帰した場合も最新一覧を取り直す。
 window.addEventListener('pageshow',event=>{if(event.persisted)refreshList()});
-// 作成ページや個別ページからタブを戻した場合も古い一覧を残さない。
 window.addEventListener('focus',()=>{if(Date.now()-lastLoadedAt>1500)refreshList()});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&Date.now()-lastLoadedAt>1500)refreshList()});

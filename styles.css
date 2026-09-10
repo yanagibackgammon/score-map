@@ -197,21 +197,24 @@ main{width:min(1580px,calc(100% - 32px));margin:0 auto;padding:18px 0 48px}
 }
 
 /* v24: root position list */
-.list-main{width:min(980px,calc(100% - 32px));padding-top:24px}
-.list-title{margin:0 0 12px;padding-bottom:8px;border-bottom:2px solid var(--theme);font-size:20px;font-weight:900;line-height:1.2}
-.position-list{border-top:1px solid #e1e4e6}
-.position-list-row{min-height:52px;padding:0 14px;display:flex;align-items:center;justify-content:space-between;gap:16px;border-bottom:1px solid #e1e4e6;color:#111;text-decoration:none;background:#fff}
-.position-list-row:hover{background:#faf8f3}
-.position-list-name{min-width:0;font-size:14px;font-weight:800;overflow-wrap:anywhere}
-.position-list-arrow{flex:0 0 auto;color:var(--theme);font-size:25px;font-weight:400;line-height:1}
+.list-main{width:min(1240px,calc(100% - 32px));padding-top:28px;padding-bottom:44px}
+.position-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:30px 34px}
+.position-list-card{min-width:0;display:block;color:#111;text-decoration:none;background:#fff}
+.position-list-caption{margin:0 0 9px;padding:0 2px 8px;border-bottom:2px solid var(--theme);font-size:15px;font-weight:800;line-height:1.4;overflow-wrap:anywhere}
+.position-list-board{width:100%;overflow:hidden;background:#fff;line-height:0}
+.position-list-board svg{display:block;width:100%;height:auto;background:#fff}
+.position-list-board-missing{min-height:120px;display:flex;align-items:center;justify-content:center;border:1px solid #e5e7eb;color:#8b9195;font-size:12px;line-height:1.5}
+.position-list-card:hover .position-list-caption{color:var(--active)}
 .position-list-status{margin:18px 0 0;color:#737b80;font-size:12px;text-align:center}
 @media(max-width:720px){
   .title-group{gap:6px}
   h1{font-size:29px}
   .page-switch{min-width:44px;height:29px;padding:0 7px;font-size:11px}
   .creator{font-size:8px}.creator a{font-size:10px}
-  .list-main{width:calc(100% - 16px);padding-top:16px}
-  .list-title{font-size:18px}
-  .position-list-row{min-height:48px;padding:0 10px}
-  .position-list-name{font-size:13px}
+  .list-main{width:calc(100% - 16px);padding-top:18px;padding-bottom:32px}
+  .position-list-caption{margin-bottom:7px;padding-bottom:6px;font-size:13px}
+}
+
+@media (max-width:760px){
+  .position-list{grid-template-columns:1fr;gap:24px}
 }
