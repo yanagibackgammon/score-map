@@ -28,7 +28,7 @@ window.ScoreMapBoard = (() => {
     else {out.push(`<text x="${scoreX}" y="233" text-anchor="middle" fill="#000" font-size="27" font-weight="700">${scoreW}</text><text x="${scoreX}" y="284.5" text-anchor="middle" fill="#fff" font-size="27" font-weight="700">${ml}</text><text x="${scoreX}" y="331" text-anchor="middle" fill="#000" font-size="27" font-weight="700">${scoreB}</text>`)}
     const pipB=[...Array(24)].reduce((s,_,i)=>s+(i+1)*Math.max(n(p[i+1]),0),0)+25*Math.max(n(p[25]),0);
     const pipW=[...Array(24)].reduce((s,_,i)=>s+(25-(i+1))*Math.max(-n(p[i+1]),0),0)+25*Math.max(-n(p[0]),0);
-    out.push(`<text x="${barCenter}" y="18" text-anchor="middle">${pipW}</text><text x="${barCenter}" y="540" text-anchor="middle">${pipB}</text>`);
+    out.push(`<text x="${scoreX}" y="190" text-anchor="middle">${pipW}</text><text x="${scoreX}" y="374" text-anchor="middle">${pipB}</text>`);
     for(let c=0;c<6;c++) out.push(`<text x="${(left1+(c+.5)*pointW).toFixed(2)}" y="18" text-anchor="middle">${13+c}</text>`);
     for(let c=0;c<6;c++) out.push(`<text x="${(right1+(c+.5)*pointW).toFixed(2)}" y="18" text-anchor="middle">${19+c}</text>`);
     for(let c=0;c<6;c++) out.push(`<text x="${(left1+(c+.5)*pointW).toFixed(2)}" y="540" text-anchor="middle">${12-c}</text>`);
