@@ -198,7 +198,7 @@ main{width:min(1580px,calc(100% - 32px));margin:0 auto;padding:18px 0 48px}
 
 /* v24: root position list */
 .list-main{width:min(1240px,calc(100% - 32px));padding-top:28px;padding-bottom:44px}
-.position-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:30px 34px}
+.position-list{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:30px 24px}
 .position-list-card{min-width:0;display:block;color:#111;text-decoration:none;background:#fff}
 .position-list-caption{margin:0 0 9px;padding:0 2px 8px;border-bottom:2px solid var(--theme);font-size:15px;font-weight:800;line-height:1.4;overflow-wrap:anywhere}
 .position-list-board{width:100%;overflow:hidden;background:#fff;line-height:0}
@@ -216,5 +216,5 @@ main{width:min(1580px,calc(100% - 32px));margin:0 auto;padding:18px 0 48px}
 }
 
 @media (max-width:760px){
-  .position-list{grid-template-columns:1fr;gap:24px}
+  .position-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:20px 12px}
 }
